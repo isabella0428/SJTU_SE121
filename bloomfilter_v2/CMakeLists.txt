@@ -17,4 +17,5 @@ include_directories(./include)
 set(SRCS src/kvstore.cc src/bloomfilter.cc src/MurmurHash3.cc)
 
 add_executable(Test1 test/correctness.cc ${SRCS})
+add_executable
 add_executable(TestIterator test/testIterator.cc ${SRCS})
