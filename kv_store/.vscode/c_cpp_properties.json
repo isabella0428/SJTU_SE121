@@ -1,0 +1,11 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "defines": [],
+            "compilerPath": "/usr/bin/g++-9",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}
