@@ -28,6 +28,10 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir)
 		filesystem::create_directories(this->sstable_base_dir);
 	}
 
+	if (!filesystem::exists(this->sstable_base_dir)) {
+		filesystem::create_directories(this->sstable_base_dir);
+	}
+
 	// For level file picking
 	srand(time(NULL));
 }
@@ -634,9 +638,9 @@ vector<string> KVStore::select_sstable_path(int level, int filenumber, int limit
 		}
 	}
 
-	while(path_vec.size() > filenumber - limit) {
-		path_vec.erase(path_vec.begin());
+	if(level > 0) {
+		while (path_vec.size() > filenumber - limit)
+			path_vec.erase(path_vec.begin());
 	}
-
 	return path_vec;
 }

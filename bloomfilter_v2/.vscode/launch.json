@@ -9,7 +9,7 @@
             "name": "(lldb) Launch",
             "type": "cppdbg",
             "request": "launch", 
-            "program": "${workspaceFolder}/TestIterator",
+            "program": "${workspaceFolder}/Test2",
             "preLaunchTask": "build",
             "args": ["-v"],
             "stopAtEntry": false,

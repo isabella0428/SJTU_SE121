@@ -1,10 +1,10 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/TestIterator.dir/src/MurmurHash3.cc.o"
-  "CMakeFiles/TestIterator.dir/src/bloomfilter.cc.o"
-  "CMakeFiles/TestIterator.dir/src/kvstore.cc.o"
   "CMakeFiles/TestIterator.dir/test/testIterator.cc.o"
-  "TestIterator"
+  "CMakeFiles/TestIterator.dir/src/kvstore.cc.o"
+  "CMakeFiles/TestIterator.dir/src/bloomfilter.cc.o"
+  "CMakeFiles/TestIterator.dir/src/MurmurHash3.cc.o"
   "TestIterator.pdb"
+  "TestIterator"
 )
 
 # Per-language clean rules from dependency scanning.

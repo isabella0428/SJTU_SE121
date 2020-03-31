@@ -28,11 +28,15 @@ private:
 		phase();
 
 		// Test deletions
-		for (i = 0; i < max; i+=2)
+		for (i = 0; i < max; i+=2) {
+			cout << "first" << i << endl;
 			EXPECT(true, store.del(i));
+		}
+
 
 		// Prepare data for Test Mode
 		for (i = 0; i < max; ++i) {
+			cout << "second" << i << endl;
 			switch (i & 3) {
 			case 0:
 				EXPECT(not_found, store.get(i));

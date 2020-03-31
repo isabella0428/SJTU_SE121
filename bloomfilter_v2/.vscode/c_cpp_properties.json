@@ -3,7 +3,7 @@
         {
             "name": "Linux",
             "defines": [],
-            "compilerPath": "/usr/bin/g++-9",
+            "compilerPath": "/usr/local/bin/g++-9",
             "cppStandard": "c++17"
         }
     ],

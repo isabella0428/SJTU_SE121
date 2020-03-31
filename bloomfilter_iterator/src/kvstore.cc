@@ -26,6 +26,8 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir)
 	{
 		filesystem::remove_all(this->sstable_base_dir);
 		filesystem::create_directories(this->sstable_base_dir);
+	} else {
+		filesystem::create_directories(this->sstable_base_dir);
 	}
 
 	// For level file picking
@@ -39,10 +41,27 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir)
  */
 KVStore::~KVStore()
 {
-	this->memtable->clear();
+	vector<Entry_time> key_value_vec;
+
+	for (Entry<uint64_t, string> e : this->memtable->getAllElement())
+	{
+		key_value_vec.push_back(
+			Entry_time(e._key, e._value, sstable_num));
+	}
+
+	if (key_value_vec.size() > 0) {
+		// Store the elements to sstable
+		if (!save_as_sstable(key_value_vec, 0, true))
+		{
+			cout << "Failed to save as sstable!" << endl;
+			return;
+		}
+	}
+
 	for (int i = 0; i < sstable_num; ++i) {
 		all_sstable_bmfilter[i].clear();
 	}
+
 	delete this->memtable;
 }
 
@@ -117,7 +136,6 @@ string KVStore::get(uint64_t key)
 			}
 		}
 	}
-
 	return value;
 }
 
@@ -147,7 +165,7 @@ scan_container KVStore::scan(uint64_t key1, uint64_t key2)
 bool KVStore::del(uint64_t key)
 {
 	string value;
-	if (this->get(key).length() <= 0) {
+	if (this->get(key).length() == 0) {
 		return false;
 	}
 	this->put(key, "");
@@ -386,7 +404,6 @@ bool KVStore::save_as_sstable(
 		string target_file = level_path + to_string(sstable_num++) + ".sst";
 		operation_result &= std::filesystem::copy_file(filesystem::path(file_path), filesystem::path(target_file));
 	}
-
 	return operation_result;
 }
 
@@ -634,8 +651,11 @@ vector<string> KVStore::select_sstable_path(int level, int filenumber, int limit
 		}
 	}
 
-	while(path_vec.size() > filenumber - limit) {
-		path_vec.erase(path_vec.begin());
+	if (level > 0) {
+		while (path_vec.size() > filenumber - limit)
+		{
+			path_vec.erase(path_vec.begin());
+		}
 	}
 
 	return path_vec;
