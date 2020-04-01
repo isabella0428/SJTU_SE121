@@ -4,15 +4,14 @@ project(SkipList)
 
 include_directories(./include)
 
-SET(CMAKE_BUILD_TYPE "Debug")
-
 SET(CMAKE_SYSTEM_NAME Linux)
 
 SET(CMAKE_CXX_COMPILER /usr/local/bin/g++-9)
 
-set(CMAKE_CXX_FLAGS "-std=c++17")  
+set(CMAKE_CXX_FLAGS "-std=c++17")
 
-
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
 include_directories(./include)
 

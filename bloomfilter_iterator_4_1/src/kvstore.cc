@@ -363,6 +363,10 @@ vector<Entry_time> KVStore::k_merge_sort(vector< vector<Entry_time> > all_sstabl
 	// Store the next element of each sstable
 	int index[sstable_num];
 
+	for (int i = 0; i < sstable_num; ++i) {
+		index[i] = 0;
+	}
+
 	bool all_empty = true;
 	while(1)
 	{
@@ -371,10 +375,12 @@ vector<Entry_time> KVStore::k_merge_sort(vector< vector<Entry_time> > all_sstabl
 			// Jump old key-value
 			vector<Entry_time> sstable_content = all_sstable_content[i];
 			int sstable_length = sstable_content.size();
+			// Get rid of old records within a sstable
 			while (index[i] < sstable_length - 1
-				|| (sstable_content[index[i]]._key == sstable_content[index[i] + 1]._key)) {
+				&& (sstable_content[index[i]]._key == sstable_content[index[i] + 1]._key)) {
 				++index[i];
 			}
+
 			if (index[i] < sstable_length) {
 				pq.push(sstable_content[index[i]++]);
 				all_empty = false;
@@ -388,8 +394,8 @@ vector<Entry_time> KVStore::k_merge_sort(vector< vector<Entry_time> > all_sstabl
 		Entry_time e = pq.top();
 		pq.pop();
 
+		// Get rid of all old records between different sstables
 		while(pq.size() > 0 && pq.top()._key == e._key) {
-			int size = pq.size();
 			pq.pop();
 		}
 		
