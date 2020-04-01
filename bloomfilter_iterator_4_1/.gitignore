@@ -1,0 +1,7 @@
+correctness
+persistence
+*.o
+*.sst
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake

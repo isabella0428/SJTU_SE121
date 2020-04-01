@@ -1,0 +1,1 @@
+/usr/local/bin/g++-9  -std=c++17 -O2 -g -Wl,-search_paths_first -Wl,-headerpad_max_install_names  CMakeFiles/Test2.dir/test/persistence.cc.o CMakeFiles/Test2.dir/src/kvstore.cc.o CMakeFiles/Test2.dir/src/bloomfilter.cc.o CMakeFiles/Test2.dir/src/MurmurHash3.cc.o  -o Test2 
