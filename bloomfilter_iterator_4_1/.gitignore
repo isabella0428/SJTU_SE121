@@ -5,3 +5,8 @@ persistence
 CMakeFiles
 CMakeCache.txt
 cmake_install.cmake
+.vscode
+Test1*
+Test2*
+Testiterator*
+TestPQ*
