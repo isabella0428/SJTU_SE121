@@ -29,7 +29,7 @@ private:
 		// Test multiple key-value pairs
 		for (i = 0; i < max; ++i)
 		{
-			// cout << "put " << i << endl;
+			cout << "put " << i << endl;
 			store.put(i, std::string(i + 1, 's'));
 			string str1 = store.get(i);
 			int length = str1.length();

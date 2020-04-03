@@ -7,6 +7,7 @@
 #include <cmath>
 #include <vector>
 #include <set>
+#include <map>
 
 using namespace std;
 
@@ -20,6 +21,7 @@ private:
 	vector<bloomfilter> all_sstable_bmfilter;
 	vector<sstable_index> all_sstable_index; 
 	string sstable_base_dir;
+	map<int, int> sstable_level;
 
 	int level_limit(int level) { return pow(2, level + 1); }
 

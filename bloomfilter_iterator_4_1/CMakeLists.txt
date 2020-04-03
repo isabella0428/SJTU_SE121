@@ -4,6 +4,8 @@ project(SkipList)
 
 include_directories(./include)
 
+set(CMAKE_BUILD_TYPE Debug)
+
 SET(CMAKE_SYSTEM_NAME Linux)
 
 SET(CMAKE_CXX_COMPILER /usr/local/bin/g++-9)

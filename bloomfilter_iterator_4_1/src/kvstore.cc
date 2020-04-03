@@ -446,10 +446,19 @@ bool KVStore::save_as_sstable(
 	bool operation_result = true;
 	int m_size = merged.size();
 	int index = 0;
+
+	string level_path = sstable_base_dir + "/level" + to_string(level) + "/";
+	filesystem::path level_p(level_path);
+	if (!exists(level_p))
+	{
+		create_directories(level_p);
+		max_level = level;
+	}
+
 	while (index < merged.size())
 	{
-		// Get the file_path of the sstable we are going to create (under sstable_base_dir)
-		string file_path = sstable_base_dir + "/" + to_string(sstable_num) + ".sst";
+		// Get the file_path of the sstable we are going to create (under level folder)
+		string file_path = level_path + to_string(sstable_num) + ".sst";
 		// Create the file
 		ofstream out;
 
@@ -500,6 +509,9 @@ bool KVStore::save_as_sstable(
 				sstable_num,
 				maxKey,
 				minKey);
+		
+		// Store sstable and its corresponding level
+		sstable_level.insert(make_pair<>(sstable_num, level));
 
 		// Store the index of the sstable in memory
 		all_sstable_index.push_back(s);
@@ -507,18 +519,10 @@ bool KVStore::save_as_sstable(
 		// Store the bloomfilter to memory
 		all_sstable_bmfilter.push_back(bf);
 
-		// Copy this sst file to the given level
-		string level_path = sstable_base_dir + "/level" + to_string(level) + "/";
-		filesystem::path level_p(level_path);
-		if (!exists(level_p))
-		{
-			create_directories(level_p);
-			max_level = level;
-		}
+		// Add sstable number
+		++sstable_num;
 
-		string target_file = level_path + to_string(sstable_num++) + ".sst";
 		// std::filesystem::rename(file_path, target_file);
-		operation_result &= std::filesystem::copy_file(filesystem::path(file_path), filesystem::path(target_file));
 		// std::chrono::duration<double> diff = end-start;
 		// printf("copy costs %f seconds\n", diff.count());
 		// operation_result &= std::filesystem::remove(file_path);
@@ -639,7 +643,6 @@ bool KVStore::binary_search_sstable(
 	const sstable_index &sstable_index,
 	uint64_t key, string *value, int sstable_id, int &timestamp)
 {
-
 	// Binary Search
 	vector<key_offset> vec = sstable_index._vector;
 	int loc = -1;
@@ -678,9 +681,16 @@ bool KVStore::binary_search_sstable(
 	}
 
 	// Read Value from sstable
-	string path = sstable_base_dir + "/" + to_string(sstable_id) + ".sst";
+	string path = sstable_base_dir + "/level" + to_string(sstable_level.find(sstable_id)->second) 
+		+ "/" + to_string(sstable_id) + ".sst";
+
 	fstream in;
 	in.open(path, ios::binary | ios::in);
+
+	if (!in.is_open())
+	{
+		return false;
+	}
 
 	int value_length;
 	if (loc == vec.size() - 1)
