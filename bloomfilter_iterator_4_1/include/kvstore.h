@@ -27,7 +27,7 @@ private:
 
 	bool check_level(int level, int limit);
 
-	bool save_as_sstable(vector<Entry_time> vec, int level, bool from_memtable);
+	bool save_as_sstable(vector<Entry_time> &vec, int level, bool from_memtable);
 
 	bool compaction(int level, int filenumber, int limit);
 
@@ -48,7 +48,7 @@ private:
 
 	vector<int> get_level_sstable_num(int level);
 
-	vector<Entry_time> k_merge_sort(vector< vector<Entry_time> > all_sstable_content);
+	vector<Entry_time> k_merge_sort(const vector< vector<Entry_time> > &all_sstable_content);
 
 
 public:

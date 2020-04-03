@@ -7,6 +7,7 @@
 #include <regex>
 #include <iostream>
 #include "time.h"
+#include <chrono>
 
 using namespace std;
 
@@ -323,25 +324,20 @@ bool KVStore::merge_files(vector<string> file1, vector<string> file2, int next_l
 	int new_timestamp = sstable_num;
 
 	// vector[i] stores the entry time of a sstable
-	vector< vector<Entry_time> > all_sstable_content;
+	vector< vector<Entry_time> > all_sstable_content(file1.size() + file2.size(), vector<Entry_time>());
 
 	// Merge the key offset of file1 and file2 into a vector
 	vector<Entry_time> sstable_content;
-	for (string path : file1) {
-		sstable_content = read_key_offset_from_file(path);
-		all_sstable_content.push_back(sstable_content);
+	for (auto i = 0; i < file1.size() + file2.size(); ++i) {
+		string path;
+		if (i < file1.size()) {
+			path = file1[i];
+		} else {
+			path = file2[i - file1.size()];
+		}
+		all_sstable_content[i] = read_key_offset_from_file(path);
 		filesystem::remove(path);
 	}
-
-	if (file2.size() > 0) {
-		for (string path : file2)
-		{
-			sstable_content = read_key_offset_from_file(path);
-			all_sstable_content.push_back(sstable_content);
-			filesystem::remove(path);
-		}
-	}
-
 	int size = all_sstable_content.size();
 	vector<Entry_time> merged = k_merge_sort(all_sstable_content);
 
@@ -354,7 +350,7 @@ bool KVStore::merge_files(vector<string> file1, vector<string> file2, int next_l
  * K merge sort
  * Sort all sstable content together
  */
-vector<Entry_time> KVStore::k_merge_sort(vector< vector<Entry_time> > all_sstable_content) {
+vector<Entry_time> KVStore::k_merge_sort(const vector< vector<Entry_time> >& all_sstable_content) {
 	int sstable_num = all_sstable_content.size();
 	vector<Entry_time> merged;
 
@@ -373,7 +369,8 @@ vector<Entry_time> KVStore::k_merge_sort(vector< vector<Entry_time> > all_sstabl
 		all_empty = true;
 		for (int i = 0; i < sstable_num; ++i) {
 			// Jump old key-value
-			vector<Entry_time> sstable_content = all_sstable_content[i];
+			// vector<Entry_time> sstable_content = all_sstable_content[i];
+			const auto& sstable_content = all_sstable_content[i];
 			int sstable_length = sstable_content.size();
 			// Get rid of old records within a sstable
 			while (index[i] < sstable_length - 1
@@ -401,7 +398,6 @@ vector<Entry_time> KVStore::k_merge_sort(vector< vector<Entry_time> > all_sstabl
 		
 		merged.push_back(e);
 	}
-	
 	return merged;
 }
 
@@ -411,8 +407,9 @@ vector<Entry_time> KVStore::k_merge_sort(vector< vector<Entry_time> > all_sstabl
  * Notice that when it is converted from memtable, it size can be a little higher than limit
  */
 bool KVStore::save_as_sstable(
-	vector<Entry_time> merged, int level, bool from_memtable)
+	vector<Entry_time> &merged, int level, bool from_memtable)
 {
+	auto start = std::chrono::steady_clock::now();
 	bool operation_result = true;
 	int m_size = merged.size();
 
@@ -490,6 +487,9 @@ bool KVStore::save_as_sstable(
 		string target_file = level_path + to_string(sstable_num++) + ".sst";
 		operation_result &= std::filesystem::copy_file(filesystem::path(file_path), filesystem::path(target_file));
 	}
+	auto end = std::chrono::steady_clock::now();
+	std::chrono::duration<double> diff = end-start;
+	printf("save_as_ss_table %ld items costs %f seconds\n", m_size, diff.count());
 	return operation_result;
 }
 
