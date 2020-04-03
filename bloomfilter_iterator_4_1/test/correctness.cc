@@ -10,7 +10,7 @@ class CorrectnessTest : public Test
 {
 private:
 	const uint64_t SIMPLE_TEST_MAX = 512;
-	const uint64_t LARGE_TEST_MAX = 1024 * 20;
+	const uint64_t LARGE_TEST_MAX = 1024 * 40;
 
 	void regular_test(uint64_t max)
 	{
@@ -29,20 +29,16 @@ private:
 		// Test multiple key-value pairs
 		for (i = 0; i < max; ++i)
 		{
-			cout << "put " << i << endl;
 			store.put(i, std::string(i + 1, 's'));
 			string str1 = store.get(i);
 			int length = str1.length();
 			int k = str1.size();
 			EXPECT(std::string(i + 1, 's'), str1);
-			// cout << str1.size() << endl;
 		}
 		phase();
-
 		// Test after all insertions
 		for (i = 0; i < max; ++i)
 		{
-			// cout << "get " << i << endl;
 			EXPECT(std::string(i + 1, 's'), store.get(i));
 		}
 		phase();

@@ -143,17 +143,11 @@ string KVStore::get(uint64_t key)
 			{
 				continue;
 			}
-
 			// If the key is within the key_range of the sstable, do binary search
 			// Since there may be multiple same keys with different timestamp
 			// return the one with the biggest timestamp
 			if (binary_search_sstable(all_sstable_index[num], key, &cur_value, num, cur_timestamp))
 			{
-				// In level0, there may be overlapping keys
-				if (l == 0)
-				{
-					return cur_value;
-				}
 
 				if (cur_timestamp > timestamp)
 				{
@@ -287,15 +281,28 @@ bool KVStore::compaction(int level, int filenumber, int limit)
 		filesystem::create_directories(next_level_path);
 		max_level = level + 1;
 
-		string file_path;
-		for (auto &p : select_sstable_path(level, filenumber, limit))
-		{
-			file_path = p;
-			target_path = next_level_path + to_string(get_file_id(file_path)) + ".sst";
-			result &= filesystem::copy_file(file_path, target_path);
-			filesystem::remove(file_path);
+		if (level > 0) {
+			string file_path;
+			for (auto &p : select_sstable_path(level, filenumber, limit))
+			{
+				file_path = p;
+				int num = get_file_id(file_path);
+				target_path = next_level_path + to_string(num) + ".sst";
+				// sstable_level.insert(make_pair(num, level + 1));
+				sstable_level[num] = level + 1;
+				filesystem::rename(file_path, target_path);
+			}
+			return true;
 		}
-		return result;
+		// string file_path;
+		// for (auto &p : select_sstable_path(level, filenumber, limit))
+		// {
+		// 	file_path = p;
+		// 	target_path = next_level_path + to_string(get_file_id(file_path)) + ".sst";
+		// 	result &= filesystem::copy_file(file_path, target_path);
+		// 	filesystem::remove(file_path);
+		// }
+		// return result;	
 	}
 
 	// Get the key range of the files of the lower layer
@@ -646,7 +653,6 @@ bool KVStore::binary_search_sstable(
 	// Binary Search
 	vector<key_offset> vec = sstable_index._vector;
 	int loc = -1;
-
 	int low = 0, high = vec.size() - 1;
 	while (low <= high)
 	{
@@ -668,7 +674,6 @@ bool KVStore::binary_search_sstable(
 			high = middle - 1;
 		}
 	}
-
 	if (loc == -1)
 	{
 		return false;
@@ -679,19 +684,16 @@ bool KVStore::binary_search_sstable(
 	{
 		loc++;
 	}
-
 	// Read Value from sstable
 	string path = sstable_base_dir + "/level" + to_string(sstable_level.find(sstable_id)->second) 
 		+ "/" + to_string(sstable_id) + ".sst";
 
 	fstream in;
 	in.open(path, ios::binary | ios::in);
-
 	if (!in.is_open())
 	{
 		return false;
 	}
-
 	int value_length;
 	if (loc == vec.size() - 1)
 	{
@@ -721,7 +723,6 @@ bool KVStore::binary_search_sstable(
 	s_len = s.length();
 	*value = s;
 	timestamp = sstable_index._timestamp;
-
 	delete[] binary_value;
 
 	return true;
