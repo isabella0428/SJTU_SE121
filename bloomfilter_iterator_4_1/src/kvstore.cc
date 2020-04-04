@@ -136,10 +136,7 @@ string KVStore::get(uint64_t key)
 	{
 		for (int num : get_level_sstable_num(l))
 		{
-			bloomfilter bf = all_sstable_bmfilter[num];
-
-			bool ans = bf.contains(key);
-			if (!bf.contains(key))
+			if (!all_sstable_bmfilter[num].contains(key))
 			{
 				continue;
 			}
@@ -157,7 +154,7 @@ string KVStore::get(uint64_t key)
 			}
 		}
 
-		if (value.length() > 0)
+		if (value.length() > 0 || timestamp != -1)
 		{
 			return value;
 		}
@@ -280,7 +277,6 @@ bool KVStore::compaction(int level, int filenumber, int limit)
 	{
 		filesystem::create_directories(next_level_path);
 		max_level = level + 1;
-
 		if (level > 0) {
 			string file_path;
 			for (auto &p : select_sstable_path(level, filenumber, limit))
@@ -294,15 +290,6 @@ bool KVStore::compaction(int level, int filenumber, int limit)
 			}
 			return true;
 		}
-		// string file_path;
-		// for (auto &p : select_sstable_path(level, filenumber, limit))
-		// {
-		// 	file_path = p;
-		// 	target_path = next_level_path + to_string(get_file_id(file_path)) + ".sst";
-		// 	result &= filesystem::copy_file(file_path, target_path);
-		// 	filesystem::remove(file_path);
-		// }
-		// return result;	
 	}
 
 	// Get the key range of the files of the lower layer
@@ -359,7 +346,6 @@ bool KVStore::merge_files(vector<string> file1, vector<string> file2, int next_l
 	vector<vector<Entry_time>> all_sstable_content(file1.size() + file2.size(), vector<Entry_time>());
 
 	// Merge the key offset of file1 and file2 into a vector
-	vector<Entry_time> sstable_content;
 	for (auto i = 0; i < file1.size() + file2.size(); ++i)
 	{
 		string path;
@@ -373,11 +359,11 @@ bool KVStore::merge_files(vector<string> file1, vector<string> file2, int next_l
 		}
 		all_sstable_content[i] = read_key_offset_from_file(path);
 		filesystem::remove(path);
+		// Remove from the map
+		sstable_level.erase(get_file_id(path));
 	}
-	int size = all_sstable_content.size();
-	vector<Entry_time> merged = k_merge_sort(all_sstable_content);
 
-	save_as_sstable(merged, next_level, false);
+	save_as_sstable(k_merge_sort(all_sstable_content), next_level, false);
 
 	return check_level(next_level, level_limit(next_level));
 }
@@ -394,12 +380,7 @@ vector<Entry_time> KVStore::k_merge_sort(const vector<vector<Entry_time>> &all_s
 	priority_queue<Entry_time, vector<Entry_time>, greater<Entry_time>> pq;
 
 	// Store the next element of each sstable
-	int index[sstable_num];
-
-	for (int i = 0; i < sstable_num; ++i)
-	{
-		index[i] = 0;
-	}
+	int index[sstable_num] = {0};
 
 	bool all_empty = true;
 	while (1)
@@ -447,9 +428,8 @@ vector<Entry_time> KVStore::k_merge_sort(const vector<vector<Entry_time>> &all_s
  * Notice that when it is converted from memtable, it size can be a little higher than limit
  */
 bool KVStore::save_as_sstable(
-	vector<Entry_time> &merged, int level, bool from_memtable)
+	const vector<Entry_time> &merged, int level, bool from_memtable)
 {
-	auto start = std::chrono::steady_clock::now();
 	bool operation_result = true;
 	int m_size = merged.size();
 	int index = 0;
@@ -529,14 +509,7 @@ bool KVStore::save_as_sstable(
 		// Add sstable number
 		++sstable_num;
 
-		// std::filesystem::rename(file_path, target_file);
-		// std::chrono::duration<double> diff = end-start;
-		// printf("copy costs %f seconds\n", diff.count());
-		// operation_result &= std::filesystem::remove(file_path);
 	}
-	auto end = std::chrono::steady_clock::now();
-	std::chrono::duration<double> diff = end - start;
-	// printf("%d save_as_ss_table %ld items costs %f seconds\n", from_memtable , m_size, diff.count());
 	return true;
 }
 
@@ -552,11 +525,11 @@ vector<Entry_time> KVStore::read_key_offset_from_file(string file_path)
 	int file_id = get_file_id(file_path);
 
 	// Get certain key-offset index of the given file
-	sstable_index index = all_sstable_index.at(file_id);
-	vector<key_offset> v = index._vector;
+	const auto& index = all_sstable_index.at(file_id);
+	const auto& v = index._vector;
 
 	// Store all key value within this file
-	vector<Entry_time> all_key_value;
+	vector<Entry_time> all_key_value(v.size());
 
 	// Read all key value pair with timestamp from the sstable
 	uint64_t key;
@@ -573,12 +546,10 @@ vector<Entry_time> KVStore::read_key_offset_from_file(string file_path)
 		in.read(value, key_value_length - sizeof(uint64_t));
 		value[key_value_length - sizeof(uint64_t)] = '\0';
 
-		all_key_value.push_back(
-			Entry_time(
-				key,
-				string(value),
-				index._timestamp));
-
+		all_key_value[i] = Entry_time(
+									key,
+									string(value),
+									index._timestamp);
 		delete[] value;
 	}
 
@@ -586,9 +557,9 @@ vector<Entry_time> KVStore::read_key_offset_from_file(string file_path)
 	in.read((char *)&key, 8);
 
 	// Calculate the total length of the file since a binary file doesn't have eod
-	int offset = v[v.size() - 1]._offset;
 	in.seekg(0, ios::end);
 	int length = in.tellg();
+	int offset = v[v.size() - 1]._offset;
 	int value_length = length - offset - 8;
 	value = new char[value_length + 1];
 
@@ -596,8 +567,7 @@ vector<Entry_time> KVStore::read_key_offset_from_file(string file_path)
 	in.read(value, value_length);
 	value[value_length] = '\0';
 
-	all_key_value.push_back(
-		Entry_time(key, string(value), index._timestamp));
+	all_key_value[v.size() - 1] = Entry_time(key, string(value), index._timestamp);
 
 	delete[] value;
 
