@@ -41,7 +41,7 @@ private:
 
 	bool binary_search_sstable(const sstable_index &sstable_index, uint64_t key, string *value, int sstable_id, int &timestamp);
 
-	vector<Entry_time> read_key_offset_from_file(string file_path);
+	vector<Entry_time> read_key_offset_from_file(string file_path, int level);
 
 	vector<Entry_time> merge_two_files(
 		vector<Entry_time> file1, vector<Entry_time> file2);
