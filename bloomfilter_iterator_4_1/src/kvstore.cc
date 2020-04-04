@@ -265,7 +265,6 @@ bool KVStore::check_level(int level, int limit)
 bool KVStore::compaction(int level, int filenumber, int limit)
 {
 	// Get this level and  next level path
-	// string format_string = sstable_base_dir + "/level%d/";
 	string level_path = sstable_base_dir + "/level" + to_string(level) + "/";
 	string next_level_path = sstable_base_dir + "/level" + to_string(level + 1) + "/";
 
@@ -284,7 +283,6 @@ bool KVStore::compaction(int level, int filenumber, int limit)
 				file_path = p;
 				int num = get_file_id(file_path);
 				target_path = next_level_path + to_string(num) + ".sst";
-				// sstable_level.insert(make_pair(num, level + 1));
 				sstable_level[num] = level + 1;
 				filesystem::rename(file_path, target_path);
 			}
@@ -344,20 +342,23 @@ bool KVStore::merge_files(vector<string> file1, vector<string> file2, int next_l
 
 	// vector[i] stores the entry time of a sstable
 	vector<vector<Entry_time>> all_sstable_content(file1.size() + file2.size(), vector<Entry_time>());
-
 	// Merge the key offset of file1 and file2 into a vector
 	for (auto i = 0; i < file1.size() + file2.size(); ++i)
 	{
+		int level;
 		string path;
 		if (i < file1.size())
 		{
 			path = file1[i];
+			level = 0;
 		}
 		else
 		{
 			path = file2[i - file1.size()];
+			level = 1;
 		}
-		all_sstable_content[i] = read_key_offset_from_file(path);
+		// Add level as new member of entry
+		all_sstable_content[i] = read_key_offset_from_file(path, level);
 		filesystem::remove(path);
 		// Remove from the map
 		sstable_level.erase(get_file_id(path));
@@ -396,7 +397,6 @@ vector<Entry_time> KVStore::k_merge_sort(const vector<vector<Entry_time>> &all_s
 			{
 				++index[i];
 			}
-
 			if (index[i] < sstable_length)
 			{
 				pq.push(sstable_content[index[i]++]);
@@ -414,6 +414,10 @@ vector<Entry_time> KVStore::k_merge_sort(const vector<vector<Entry_time>> &all_s
 		// Get rid of all old records between different sstables
 		while (pq.size() > 0 && pq.top()._key == e._key)
 		{
+			// Get the smallest level with largest timestamp
+			if (e._level > pq.top()._level) {
+				e = pq.top();
+			}
 			pq.pop();
 		}
 
@@ -496,7 +500,6 @@ bool KVStore::save_as_sstable(
 				sstable_num,
 				maxKey,
 				minKey);
-		
 		// Store sstable and its corresponding level
 		sstable_level.insert(make_pair<>(sstable_num, level));
 
@@ -508,7 +511,6 @@ bool KVStore::save_as_sstable(
 
 		// Add sstable number
 		++sstable_num;
-
 	}
 	return true;
 }
@@ -516,7 +518,7 @@ bool KVStore::save_as_sstable(
 /**
  * Read key-value pair from disk given the fileid and the level it is in
  */
-vector<Entry_time> KVStore::read_key_offset_from_file(string file_path)
+vector<Entry_time> KVStore::read_key_offset_from_file(string file_path, int level)
 {
 	fstream in;
 	in.open(file_path, ios::binary | ios::in);
@@ -525,8 +527,8 @@ vector<Entry_time> KVStore::read_key_offset_from_file(string file_path)
 	int file_id = get_file_id(file_path);
 
 	// Get certain key-offset index of the given file
-	const auto& index = all_sstable_index.at(file_id);
-	const auto& v = index._vector;
+	const auto &index = all_sstable_index.at(file_id);
+	const auto &v = index._vector;
 
 	// Store all key value within this file
 	vector<Entry_time> all_key_value(v.size());
@@ -545,17 +547,17 @@ vector<Entry_time> KVStore::read_key_offset_from_file(string file_path)
 		in.read((char *)&key, 8);
 		in.read(value, key_value_length - sizeof(uint64_t));
 		value[key_value_length - sizeof(uint64_t)] = '\0';
-
+		// Add level info for each entry (0: lower level, 1: upper level)
 		all_key_value[i] = Entry_time(
-									key,
-									string(value),
-									index._timestamp);
+			key,
+			string(value),
+			index._timestamp,
+			level);
 		delete[] value;
 	}
 
 	// Read the last key_value
 	in.read((char *)&key, 8);
-
 	// Calculate the total length of the file since a binary file doesn't have eod
 	in.seekg(0, ios::end);
 	int length = in.tellg();
@@ -567,7 +569,7 @@ vector<Entry_time> KVStore::read_key_offset_from_file(string file_path)
 	in.read(value, value_length);
 	value[value_length] = '\0';
 
-	all_key_value[v.size() - 1] = Entry_time(key, string(value), index._timestamp);
+	all_key_value[v.size() - 1] = Entry_time(key, string(value), index._timestamp, level);
 
 	delete[] value;
 

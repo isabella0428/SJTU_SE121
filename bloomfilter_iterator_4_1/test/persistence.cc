@@ -17,16 +17,12 @@ private:
 
 		// Test multiple key-value pairs
 		for (i = 0; i < max; ++i) {
-			cout << "Phase1: " << i << endl;
 			store.put(i, std::string(i+1, 's'));
 			EXPECT(std::string(i+1, 's'), store.get(i));
 		}
 		phase();
-
 		// Test after all insertions
 		for (i = 0; i < max; ++i) {
-			cout << "Phase2: " << i << endl;
-
 			EXPECT(std::string(i + 1, 's'), store.get(i));
 		}
 		phase();
@@ -34,17 +30,13 @@ private:
 		// Test deletions
 		for (i = 0; i < max; i+=2)
 		{
-			cout << "Phase3:  del1: " << i << endl;
 			EXPECT(true, store.del(i));
+			EXPECT(not_found, store.get(i));
 		}
 
-		string ans = store.get(3770);
-		cout << "3770 get is " << store.get(3770);
 
 		// Prepare data for Test Mode
 		for (i = 0; i < max; ++i) {
-
-			cout << "Phase3: del2" << i << endl;
 			switch (i & 3) {
 			case 0:
 				EXPECT(not_found, store.get(i));
@@ -55,7 +47,6 @@ private:
 				store.put(i, std::string(i+1, 't'));
 				break;
 			case 2:
-				std::cout << i << std::endl;
 				EXPECT(not_found, store.get(i));
 				break;
 			case 3:
