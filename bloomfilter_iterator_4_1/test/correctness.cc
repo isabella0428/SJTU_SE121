@@ -10,7 +10,7 @@ class CorrectnessTest : public Test
 {
 private:
 	const uint64_t SIMPLE_TEST_MAX = 512;
-	const uint64_t LARGE_TEST_MAX = 1024 * 40;
+	const uint64_t LARGE_TEST_MAX = 1024 * 10;
 
 	void regular_test(uint64_t max)
 	{
@@ -36,6 +36,7 @@ private:
 			EXPECT(std::string(i + 1, 's'), str1);
 		}
 		phase();
+		
 		// Test after all insertions
 		for (i = 0; i < max; ++i)
 		{

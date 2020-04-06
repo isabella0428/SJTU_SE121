@@ -9,7 +9,10 @@ class bloomfilter {
     int *array; // bit vector
 
     public:
-        bloomfilter(int no, int k = 4, int length = 2000);
+        bloomfilter(int no, int k = 4, int length = 4000);
+        int *getArray() {return array;}
+        int getArrayLength() {return m;}
+        void setArray(int i, int value) {array[i] = value;}
         bool clear() { delete []array; return true;}
         bool add(uint64_t key);
         bool contains(uint64_t key);

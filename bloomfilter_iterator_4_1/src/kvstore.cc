@@ -24,20 +24,151 @@ KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
 	sstable_base_dir = dir;
 	max_level = -1;
 
-	// Clean directory
-	if (filesystem::exists(this->sstable_base_dir))
-	{
-		filesystem::remove_all(this->sstable_base_dir);
-		filesystem::create_directories(this->sstable_base_dir);
-	}
-	else
-	{
-		filesystem::create_directories(this->sstable_base_dir);
-	}
+	// // Clean directory
+	// if (filesystem::exists(this->sstable_base_dir))
+	// {						
+	// 	filesystem::remove_all(this->sstable_base_dir);
+	// 	filesystem::create_directories(this->sstable_base_dir);
+	// }
+	// else
+	// {
+	// 	filesystem::create_directories(this->sstable_base_dir);
+	// }
+
+	recover();
 
 	// For level file picking
 	srand(time(NULL));
 }
+
+/**
+ * Recover memory index, bloomfilter
+ */
+void KVStore::recover() {
+	recover_index();
+	recover_bf();
+	recover_sstable_level();
+}
+
+
+/**
+ * Recover key offset from file "base_dir/manifest"
+ * So that we can recover all index data even if system breakdowm
+ */
+bool KVStore::recover_index() {
+	string index_path = this->sstable_base_dir + "/manifest";
+
+	fstream in;
+	in.open(index_path, ios::binary|ios::in);
+
+	if (!in.is_open())
+		return false;
+
+	in.seekg(0, ios::end);
+	long total_bytes = in.tellg();
+	in.seekg(0, ios::beg);
+
+	uint64_t key_offset_pair_num, key, offset;
+	while (total_bytes > 0)
+	{
+		// Read number of key_offset pair from file
+		in.read((char *)&key_offset_pair_num, sizeof(uint64_t));
+		total_bytes -= sizeof(uint64_t);
+		total_bytes -= 2 * sizeof(uint64_t) * key_offset_pair_num;
+
+		// Start to read key_offset from file
+		// Store in memory as sstable index
+		sstable_index sst_index;
+		while (key_offset_pair_num > 0)
+		{
+			in.read((char *)&key, sizeof(uint64_t));
+			in.read((char *)&offset, sizeof(uint64_t));
+			--key_offset_pair_num;
+			sst_index._vector.push_back(key_offset(key, offset));
+		}
+		++sstable_num;
+		all_sstable_index.push_back(sst_index);
+	}
+
+	in.close();
+	return true;
+}
+
+/**
+ * Recover bloomfilter from file "base_dir/bloomfilter"
+ * So that we can recover all bloomfilter data even if system breakdowm
+ */
+bool KVStore::recover_bf() {
+	string bf_path = this->sstable_base_dir + "/bloomfilter";
+
+	fstream in;
+	in.open(bf_path, ios::binary|ios::in);
+
+	in.seekg(0, ios::end);
+	long total_bytes = in.tellg();
+	in.seekg(0, ios::beg);
+
+	int sstable_id = 0;
+	while(total_bytes > 0) {
+		bloomfilter bf(sstable_id++);
+		int *array;
+		array = new int[bf.getArrayLength()];
+		in.read((char *)array, sizeof(int) * bf.getArrayLength());
+
+		for (int i = 0; i < bf.getArrayLength(); ++i) {
+			bf.setArray(i, array[i]);
+		}
+
+		all_sstable_bmfilter.push_back(bf);
+		total_bytes -= sizeof(int) * bf.getArrayLength();
+		delete []array;
+	}
+	in.close();
+	return true;
+}
+
+/**
+ * Recover sstable_level map
+ */
+bool KVStore::recover_sstable_level() {
+	string path = sstable_base_dir + "/";
+	// string path = sstable_base_dir + "/" + "level" + to_string(level) + "/";
+
+	if (!std::filesystem::exists(path))
+		return false;
+
+	// Check if the files have the extension ".sst"
+	regex level_regex(".*level.*");
+	regex sst_regex(".*\\.sst");
+	smatch base_match;
+	string level_path, file_path;
+	for (auto &p : filesystem::directory_iterator(path))
+	{
+		// Find level directories
+		level_path = p.path();
+
+		if (regex_match(level_path, base_match, level_regex))
+		{
+			int level = get_id(level_path);
+			if (max_level < level)
+			{
+				max_level = level;
+			}
+
+			// Find sstable files
+			for (auto &file_p : filesystem::directory_iterator(level_path))
+			{
+				file_path = file_p.path();
+				if (regex_match(file_path, base_match, sst_regex)) {
+					sstable_level.insert(make_pair<>(get_id(file_path), level));
+				}
+			}
+		}
+	}
+	
+	return true;
+}
+
 
 /**
  * Release all resources
@@ -136,6 +267,8 @@ string KVStore::get(uint64_t key)
 	{
 		for (int num : get_level_sstable_num(l))
 		{
+			// cout << "total number " << get_level_sstable_num(l).size() << endl;
+			// cout << "current number is " << num << endl;
 			if (!all_sstable_bmfilter[num].contains(key))
 			{
 				continue;
@@ -281,7 +414,7 @@ bool KVStore::compaction(int level, int filenumber, int limit)
 			for (auto &p : select_sstable_path(level, filenumber, limit))
 			{
 				file_path = p;
-				int num = get_file_id(file_path);
+				int num = get_id(file_path);
 				target_path = next_level_path + to_string(num) + ".sst";
 				sstable_level[num] = level + 1;
 				filesystem::rename(file_path, target_path);
@@ -289,7 +422,7 @@ bool KVStore::compaction(int level, int filenumber, int limit)
 			return true;
 		}
 	}
-
+	
 	// Get the key range of the files of the lower layer
 	uint64_t max_key = 0, min_key = 0xffffffffffffffff;
 	vector<string> lower_layer_sstable_path = select_sstable_path(level, filenumber, limit);
@@ -297,7 +430,7 @@ bool KVStore::compaction(int level, int filenumber, int limit)
 
 	for (auto iter = lower_layer_sstable_path.begin(); iter != lower_layer_sstable_path.end(); ++iter)
 	{
-		int id = get_file_id(*iter);
+		int id = get_id(*iter);
 
 		// Get the key range of the sstable file from index in memory
 		key_range cur_key_range = get_key_range(id);
@@ -314,7 +447,7 @@ bool KVStore::compaction(int level, int filenumber, int limit)
 	for (auto &p : std::filesystem::directory_iterator(next_level_path))
 	{
 		sstable_file_path = p.path();
-		file_id = get_file_id(sstable_file_path.c_str());
+		file_id = get_id(sstable_file_path.c_str());
 		k_range = get_key_range(file_id);
 
 		if ((k_range._max < min_key) || (k_range._min > max_key))
@@ -361,7 +494,7 @@ bool KVStore::merge_files(vector<string> file1, vector<string> file2, int next_l
 		all_sstable_content[i] = read_key_offset_from_file(path, level);
 		filesystem::remove(path);
 		// Remove from the map
-		sstable_level.erase(get_file_id(path));
+		sstable_level.erase(get_id(path));
 	}
 
 	save_as_sstable(k_merge_sort(all_sstable_content), next_level, false);
@@ -479,6 +612,7 @@ bool KVStore::save_as_sstable(
 
 		if (!out.is_open())
 			return false;
+		
 		// Batch write to speed up
 		for (const auto &cur_key_value : value_vector)
 		{
@@ -500,14 +634,41 @@ bool KVStore::save_as_sstable(
 				sstable_num,
 				maxKey,
 				minKey);
+
 		// Store sstable and its corresponding level
 		sstable_level.insert(make_pair<>(sstable_num, level));
 
 		// Store the index of the sstable in memory
 		all_sstable_index.push_back(s);
 
+		// Store the index of the sstable in disk(for persistence)
+		// First store the number of key_offset pair
+		string manifest_path = this->sstable_base_dir + "/manifest";
+		out.open(manifest_path, ios::binary|ios::out|ios::app);
+
+		uint64_t key_offset_pair_num = key_offset_vector.size();
+
+		// Write the number key_value pair
+		out.write((char *)&key_offset_pair_num, sizeof(uint64_t));
+		// cout << "sstable pair number " << key_offset_pair_num << endl;
+
+		for (const auto &key_offset : key_offset_vector) {
+			// Write key
+			out.write((char *)&(key_offset._key), 8);
+			// Write value
+			out.write((char *)&(key_offset._offset), 8);
+		}
+		out.close();
+
 		// Store the bloomfilter to memory
 		all_sstable_bmfilter.push_back(bf);
+
+		// Store the index of the sstable in disk(for persistence)
+		// First store the number of key_offset pair
+		string bf_path = this->sstable_base_dir + "/bloomfilter";
+		out.open(bf_path, ios::binary|ios::out|ios::app);
+		out.write((char *)bf.getArray(), sizeof(int) * bf.getArrayLength());
+		out.close();
 
 		// Add sstable number
 		++sstable_num;
@@ -524,7 +685,7 @@ vector<Entry_time> KVStore::read_key_offset_from_file(string file_path, int leve
 	in.open(file_path, ios::binary | ios::in);
 
 	// Get file id
-	int file_id = get_file_id(file_path);
+	int file_id = get_id(file_path);
 
 	// Get certain key-offset index of the given file
 	const auto &index = all_sstable_index.at(file_id);
@@ -601,15 +762,17 @@ key_range KVStore::get_key_range(int file_id)
 }
 
 /**
- * Get file id based on given file
+ * If given file path, return file id
+ * If given directories path, return level id
  */
-int KVStore::get_file_id(string filepath)
-{
-	int id = -1;
+int KVStore::get_id(string filepath)
+{	int id = -1;
 	int num_start = 0, start = 0;
-	for (char c : filepath)
+	int length = filepath.length();
+	for (int i = 0; i < length; ++i)
 	{
-		if (c == '/')
+		char c = filepath[i];
+		if (c == '/' && i < length - 1)
 		{
 			start = num_start + 1;
 		}
@@ -622,10 +785,6 @@ int KVStore::get_file_id(string filepath)
 		if (filepath[i] >= '0' && filepath[i] <= '9')
 		{
 			num += filepath[i];
-		}
-		else
-		{
-			break;
 		}
 	}
 	return atoi(num.c_str());
@@ -759,66 +918,7 @@ vector<int> KVStore::get_level_sstable_num(int level)
 	for (auto &p : std::filesystem::directory_iterator(level_path))
 	{
 		sstable_file_path = p.path();
-		sstable_num.push_back(get_file_id(sstable_file_path));
+		sstable_num.push_back(get_id(sstable_file_path));
 	}
 	return sstable_num;
 }
-
-// /**
-//  *  Merge key-value pair
-//  */
-// vector<Entry_time> KVStore::merge_two_files(
-// 	vector<Entry_time> file1, vector<Entry_time> file2)
-// {
-// 	// Merged key value vector
-// 	vector<Entry_time> merged;
-
-// 	uint64_t key;
-// 	int time, length;
-
-// 	while(file1.size() > 0 && file2.size() > 0) {
-// 		while (file1.size() > 1 && file1[0]._key == file1[1]._key) {
-// 			file1.erase(file1.begin());
-// 		}
-
-// 		while (file2.size() > 1 && file2[0]._key == file2[1]._key)
-// 		{
-// 			file2.erase(file2.begin());
-// 		}
-
-// 		int key1 = file1[0]._key;
-// 		string value1 = file1[0]._value;
-// 		int key2 = file2[0]._key;
-// 		string value2 = file2[0]._value;
-
-// 		// Pick the smaller key first
-// 		// If equal, pick the one with the newest timestamp
-// 		if ((file1[0]._key < file2[0]._key)
-// 			|| ((file1[0]._key == file2[0]._key) && file1[0]._time > file2[0]._time)) {
-
-// 			if (file1[0]._key == file2[0]._key) {
-// 				file2.erase(file2.begin());
-// 			}
-// 			merged.push_back(Entry_time(file1[0]));
-// 			file1.erase(file1.begin());
-// 		} else {
-// 			if (file1[0]._key == file2[0]._key)
-// 			{
-// 				file1.erase(file1.begin());
-// 			}
-// 			merged.push_back(Entry_time(file2[0]));
-// 			file2.erase(file2.begin());
-// 		}
-// 	}
-
-// 	while(file1.size() > 0) {
-// 		merged.push_back(Entry_time(file1[0]));
-// 		file1.erase(file1.begin());
-// 	}
-
-// 	while (file2.size() > 0){
-// 		merged.push_back(Entry_time(file2[0]));
-// 		file2.erase(file2.begin());
-// 	}
-// 	return merged;
-// }
