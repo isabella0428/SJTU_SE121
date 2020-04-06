@@ -24,17 +24,6 @@ KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
 	sstable_base_dir = dir;
 	max_level = -1;
 
-	// // Clean directory
-	// if (filesystem::exists(this->sstable_base_dir))
-	// {						
-	// 	filesystem::remove_all(this->sstable_base_dir);
-	// 	filesystem::create_directories(this->sstable_base_dir);
-	// }
-	// else
-	// {
-	// 	filesystem::create_directories(this->sstable_base_dir);
-	// }
-
 	recover();
 
 	// For level file picking
@@ -199,6 +188,9 @@ KVStore::~KVStore()
 	{
 		all_sstable_bmfilter[i].clear();
 	}
+	// Clean directory
+	filesystem::remove_all(this->sstable_base_dir);
+
 
 	delete this->memtable;
 }
@@ -217,14 +209,7 @@ void KVStore::put(uint64_t key, const std::string &s)
 	// If the memorytable's size is greater than the limit, store it to sstable
 	if (this->current_size > this->mem_limit)
 	{
-		vector<Entry_time> key_value_vec;
-
-		for (Entry<uint64_t, string> e : this->memtable->getAllElement())
-		{
-			key_value_vec.push_back(
-				Entry_time(e._key, e._value, sstable_num));
-		}
-
+		auto key_value_vec = this->memtable->getAllElement(sstable_num);
 		// Store the elements to sstable
 		if (!save_as_sstable(key_value_vec, 0, true))
 		{

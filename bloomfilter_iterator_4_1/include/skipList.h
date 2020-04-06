@@ -126,6 +126,17 @@ public:
         return all_elements;
     }
 
+    vector<Entry_time> getAllElement(int sstable_num) {
+        vector<Entry_time> all_elements;
+        Node *cur = header->forward[0];
+        while(cur != trailer) {
+            all_elements.push_back(Entry_time(cur->key, cur->value, sstable_num));
+            cur = cur->forward[0];
+        }
+
+        return all_elements;
+    }
+
     // clear skiplist
     void clear()
     {
