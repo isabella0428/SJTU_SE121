@@ -710,7 +710,13 @@ vector<Entry_time> KVStore::read_key_offset_from_file(string file_path, int leve
 	for (int i = 0; i < v.size() - 1; ++i)
 	{
 		key_value_length = v[i + 1]._offset - v[i]._offset;
-		value = new char[key_value_length - sizeof(uint64_t) + 1];
+		int len = key_value_length - sizeof(uint64_t) + 1;
+		if (len > 0) {
+			value = new char[len];
+		} else {
+			cerr << "Allocate string with len < 0 in read_key_offset_from_file()" << endl;
+			exit(-1);
+		}
 
 		in.read((char *)&key, 8);
 		in.read(value, key_value_length - sizeof(uint64_t));
@@ -731,7 +737,14 @@ vector<Entry_time> KVStore::read_key_offset_from_file(string file_path, int leve
 	int length = in.tellg();
 	int offset = v[v.size() - 1]._offset;
 	int value_length = length - offset - 8;
-	value = new char[value_length + 1];
+	if (value_length >= 0) {
+		value = new char[value_length + 1];
+	} else {
+		cerr << "File path: " << file_path << endl;
+		cerr << "Value_length: " << value_length << endl;
+		cerr << "Allocate last string with len < 0 in read_key_offset_from_file()" << endl;
+		exit(-1);
+	}
 
 	in.seekg(offset + 8, ios::beg);
 	in.read(value, value_length);
@@ -847,7 +860,12 @@ bool KVStore::binary_search_sstable(
 	in.seekg(vec[loc]._offset + 8, ios::beg);
 
 	char *binary_value;
-	binary_value = new char[value_length + 1];
+	if (value_length >= 0) {
+		binary_value = new char[value_length + 1];
+	} else {
+		cerr << "Allocate string with len < 0 in binary_search_sstable()" << endl;
+		exit(-1);	
+	}
 	binary_value[value_length] = '\0';
 	in.read(binary_value, value_length);
 
