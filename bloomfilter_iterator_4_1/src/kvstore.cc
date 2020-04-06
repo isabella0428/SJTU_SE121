@@ -62,10 +62,7 @@ bool KVStore::recover_index() {
 	in.open(index_path, ios::binary|ios::in);
 
 	if (!in.is_open())
-	{
-		cerr << "Failed to open manifest file";
 		return false;
-	}
 
 	in.seekg(0, ios::end);
 	long total_bytes = in.tellg();
@@ -127,8 +124,6 @@ bool KVStore::recover_bf() {
 		delete []array;
 	}
 	in.close();
-
-	cout << sstable_id << endl;
 	return true;
 }
 
@@ -205,8 +200,6 @@ KVStore::~KVStore()
 		all_sstable_bmfilter[i].clear();
 	}
 
-	cout << "Total sstable_num " << sstable_num << endl;
-	cout << "Total bf num " << all_sstable_bmfilter.size() <<endl; 
 	delete this->memtable;
 }
 
@@ -929,62 +922,3 @@ vector<int> KVStore::get_level_sstable_num(int level)
 	}
 	return sstable_num;
 }
-
-// /**
-//  *  Merge key-value pair
-//  */
-// vector<Entry_time> KVStore::merge_two_files(
-// 	vector<Entry_time> file1, vector<Entry_time> file2)
-// {
-// 	// Merged key value vector
-// 	vector<Entry_time> merged;
-
-// 	uint64_t key;
-// 	int time, length;
-
-// 	while(file1.size() > 0 && file2.size() > 0) {
-// 		while (file1.size() > 1 && file1[0]._key == file1[1]._key) {
-// 			file1.erase(file1.begin());
-// 		}
-
-// 		while (file2.size() > 1 && file2[0]._key == file2[1]._key)
-// 		{
-// 			file2.erase(file2.begin());
-// 		}
-
-// 		int key1 = file1[0]._key;
-// 		string value1 = file1[0]._value;
-// 		int key2 = file2[0]._key;
-// 		string value2 = file2[0]._value;
-
-// 		// Pick the smaller key first
-// 		// If equal, pick the one with the newest timestamp
-// 		if ((file1[0]._key < file2[0]._key)
-// 			|| ((file1[0]._key == file2[0]._key) && file1[0]._time > file2[0]._time)) {
-
-// 			if (file1[0]._key == file2[0]._key) {
-// 				file2.erase(file2.begin());
-// 			}
-// 			merged.push_back(Entry_time(file1[0]));
-// 			file1.erase(file1.begin());
-// 		} else {
-// 			if (file1[0]._key == file2[0]._key)
-// 			{
-// 				file1.erase(file1.begin());
-// 			}
-// 			merged.push_back(Entry_time(file2[0]));
-// 			file2.erase(file2.begin());
-// 		}
-// 	}
-
-// 	while(file1.size() > 0) {
-// 		merged.push_back(Entry_time(file1[0]));
-// 		file1.erase(file1.begin());
-// 	}
-
-// 	while (file2.size() > 0){
-// 		merged.push_back(Entry_time(file2[0]));
-// 		file2.erase(file2.begin());
-// 	}
-// 	return merged;
-// }
