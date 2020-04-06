@@ -59,7 +59,6 @@ private:
 
 		phase();
 
-		return;
 		report();
 		
 		/**
@@ -99,6 +98,7 @@ private:
 		uint64_t i;
 		// Test data
 		for (i = 0; i < max; ++i) {
+			std::string s = store.get(i);
 			switch (i & 3) {
 			case 0:
 				EXPECT(std::string(i+1, 't'), store.get(i));

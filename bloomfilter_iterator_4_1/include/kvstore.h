@@ -35,7 +35,7 @@ private:
 
 	key_range get_key_range(int file_id);
 
-	int get_file_id(string path);
+	int get_id(string path);
 
 	bool merge_files(vector<string> lower_layer_sstable_path, vector<string> higher_layer_sstable_path, int level);
 
@@ -52,6 +52,14 @@ private:
 
 	vector<Entry_time> k_merge_sort(const vector< vector<Entry_time> > &all_sstable_content);
 
+	// Functions for persistence
+	void recover();
+
+	bool recover_sstable_level();
+
+	bool recover_index();
+
+	bool recover_bf();
 
 public:
 	KVStore(const std::string &dir);
