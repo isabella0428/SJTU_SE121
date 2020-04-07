@@ -503,12 +503,23 @@ bool KVStore::merge_files(vector<string> file1, vector<string> file2, int next_l
  * K merge sort
  * Sort all sstable content together
  */
-vector<Entry_time> KVStore::k_merge_sort(const vector<vector<Entry_time>> &all_sstable_content)
+vector<Entry_time> KVStore::k_merge_sort(vector<vector<Entry_time>> &all_sstable_content)
 {
 	int sstable_num = all_sstable_content.size();
 	vector<Entry_time> merged;
 
-	priority_queue<Entry_time, vector<Entry_time>, greater<Entry_time>> pq;
+	struct cmp {
+		bool operator()(const Entry_time *e1, const Entry_time *e2)
+		{   
+			if ((e1->_key < e2->_key) || ((e1->_key == e2->_key) && (e1->_level < e2->_level)) || ((e1->_key == e2->_key) && (e1->_time > e2->_time)))
+			{
+				return false;
+			}
+			return true;
+		};
+	};
+
+	priority_queue<Entry_time*, vector<Entry_time*>, cmp> pq;
 
 	// Store the next element of each sstable
 	int index[sstable_num] = {0};
@@ -520,7 +531,7 @@ vector<Entry_time> KVStore::k_merge_sort(const vector<vector<Entry_time>> &all_s
 		for (int i = 0; i < sstable_num; ++i)
 		{
 			// Jump old key-value
-			const auto &sstable_content = all_sstable_content[i];
+			auto &sstable_content = all_sstable_content[i];
 			int sstable_length = sstable_content.size();
 			// Get rid of old records within a sstable
 			while (index[i] < sstable_length - 1 && (sstable_content[index[i]]._key == sstable_content[index[i] + 1]._key))
@@ -529,7 +540,7 @@ vector<Entry_time> KVStore::k_merge_sort(const vector<vector<Entry_time>> &all_s
 			}
 			if (index[i] < sstable_length)
 			{
-				pq.push(sstable_content[index[i]++]);
+				pq.push(&sstable_content[index[i]++]);
 				all_empty = false;
 			}
 		}
@@ -538,20 +549,20 @@ vector<Entry_time> KVStore::k_merge_sort(const vector<vector<Entry_time>> &all_s
 			break;
 
 		// Remove top element
-		Entry_time e = pq.top();
+		Entry_time* e = pq.top();
 		pq.pop();
 
 		// Get rid of all old records between different sstables
-		while (pq.size() > 0 && pq.top()._key == e._key)
+		while (pq.size() > 0 && pq.top()->_key == e->_key)
 		{
 			// Get the smallest level with largest timestamp
-			if (e._level > pq.top()._level) {
+			if (e->_level > pq.top()->_level) {
 				e = pq.top();
 			}
 			pq.pop();
 		}
 
-		merged.push_back(e);
+		merged.push_back(*e);
 	}
 	return merged;
 }

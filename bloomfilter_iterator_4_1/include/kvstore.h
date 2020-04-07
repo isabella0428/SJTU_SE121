@@ -51,7 +51,7 @@ private:
 
 	vector<int> get_level_sstable_num(int level);
 
-	vector<Entry_time> k_merge_sort(const vector< vector<Entry_time> > &all_sstable_content);
+	vector<Entry_time> k_merge_sort(vector< vector<Entry_time> > &all_sstable_content);
 
 	// Functions for persistence
 	void recover();
