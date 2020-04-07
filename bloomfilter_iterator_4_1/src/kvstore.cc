@@ -131,8 +131,10 @@ bool KVStore::recover_sstable_level() {
 	regex sst_regex(".*\\.sst");
 	smatch base_match;
 	string level_path, file_path;
+	level_sstable_num.push_back(set<int>());
 	for (auto &p : filesystem::directory_iterator(path))
 	{
+		level_sstable_num.push_back(set<int>());
 		// Find level directories
 		level_path = p.path();
 
@@ -149,7 +151,9 @@ bool KVStore::recover_sstable_level() {
 			{
 				file_path = file_p.path();
 				if (regex_match(file_path, base_match, sst_regex)) {
-					sstable_level.insert(make_pair<>(get_id(file_path), level));
+					int id = get_id(file_path);
+					sstable_level.insert(make_pair<>(id, level));
+					level_sstable_num[level].insert(id);
 				}
 			}
 		}
@@ -392,6 +396,7 @@ bool KVStore::compaction(int level, int filenumber, int limit)
 	// If the next level doesn't exist, create the directories and copy all files there
 	if (!filesystem::exists(next_level_path))
 	{
+		level_sstable_num.push_back(set<int>());
 		filesystem::create_directories(next_level_path);
 		max_level = level + 1;
 		if (level > 0) {
@@ -402,6 +407,8 @@ bool KVStore::compaction(int level, int filenumber, int limit)
 				int num = get_id(file_path);
 				target_path = next_level_path + to_string(num) + ".sst";
 				sstable_level[num] = level + 1;
+				level_sstable_num[level].erase(num);
+				level_sstable_num[level + 1].insert(num);
 				filesystem::rename(file_path, target_path);
 			}
 			return true;
@@ -465,21 +472,26 @@ bool KVStore::merge_files(vector<string> file1, vector<string> file2, int next_l
 	{
 		int level;
 		string path;
+		int id;
 		if (i < file1.size())
 		{
 			path = file1[i];
+			id = get_id(path);
 			level = 0;
+			level_sstable_num[next_level - 1].erase(id);
 		}
 		else
 		{
 			path = file2[i - file1.size()];
+			id = get_id(path);
 			level = 1;
+			level_sstable_num[next_level].erase(id);
 		}
 		// Add level as new member of entry
 		all_sstable_content[i] = read_key_offset_from_file(path, level);
 		filesystem::remove(path);
 		// Remove from the map
-		sstable_level.erase(get_id(path));
+		sstable_level.erase(id);
 	}
 
 	save_as_sstable(k_merge_sort(all_sstable_content), next_level, false);
@@ -564,13 +576,19 @@ bool KVStore::save_as_sstable(
 		max_level = level;
 	}
 
+	// Resize level_sstable_num
+	if (level >= level_sstable_num.size()) {
+		level_sstable_num.push_back(set<int>());
+	}
+
 	while (index < merged.size())
 	{
+		// push sstable into this level
+		level_sstable_num[level].insert(sstable_num);
 		// Get the file_path of the sstable we are going to create (under level folder)
 		string file_path = level_path + to_string(sstable_num) + ".sst";
 		// Create the file
 		ofstream out;
-
 		uint64_t offset = 0;
 		vector<key_offset> key_offset_vector; // key value pair
 		vector<Entry_time> value_vector;
@@ -895,15 +913,20 @@ vector<string> KVStore::select_sstable_path(int level, int filenumber, int limit
  */
 vector<int> KVStore::get_level_sstable_num(int level)
 {
-	string sstable_file_path;
-	string level_path = sstable_base_dir + "/level" + to_string(level) + "/";
-	vector<int> sstable_num;
+	// string sstable_file_path;
+	// string level_path = sstable_base_dir + "/level" + to_string(level) + "/";
+	// vector<int> sstable_num;
 
-	// cout << "level: " << level <<endl;
-	for (auto &p : std::filesystem::directory_iterator(level_path))
-	{
-		sstable_file_path = p.path();
-		sstable_num.push_back(get_id(sstable_file_path));
+	// // cout << "level: " << level <<endl;
+	// for (auto &p : std::filesystem::directory_iterator(level_path))
+	// {
+	// 	sstable_file_path = p.path();
+	// 	sstable_num.push_back(get_id(sstable_file_path));
+	// }
+	// return sstable_num;
+	// return level_sstable_num[level];
+	if (level >= level_sstable_num.size()) {
+		return vector<int>();
 	}
-	return sstable_num;
+	return vector<int>(level_sstable_num[level].begin(), level_sstable_num[level].end());
 }

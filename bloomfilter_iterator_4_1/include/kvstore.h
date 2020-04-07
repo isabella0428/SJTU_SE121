@@ -20,6 +20,7 @@ private:
 	int max_level;
 	vector<bloomfilter> all_sstable_bmfilter;
 	vector<sstable_index> all_sstable_index; 
+	vector<set<int>> level_sstable_num;
 	string sstable_base_dir;
 	map<int, int> sstable_level;
 
