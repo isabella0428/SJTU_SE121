@@ -170,32 +170,8 @@ bool KVStore::recover_sstable_level() {
  */
 KVStore::~KVStore()
 {
-	vector<Entry_time> key_value_vec;
-
-	for (Entry<uint64_t, string> e : this->memtable->getAllElement())
-	{
-		key_value_vec.push_back(
-			Entry_time(e._key, e._value, sstable_num));
-	}
-
-	if (key_value_vec.size() > 0)
-	{
-		// Store the elements to sstable
-		if (!save_as_sstable(key_value_vec, 0, true))
-		{
-			cout << "Failed to save as sstable!" << endl;
-			return;
-		}
-	}
-
-	for (int i = 0; i < sstable_num; ++i)
-	{
-		all_sstable_bmfilter[i].clear();
-	}
 	// Clean directory
 	filesystem::remove_all(this->sstable_base_dir);
-
-
 	delete this->memtable;
 }
 
@@ -361,16 +337,8 @@ bool KVStore::check_level(int level, int limit)
 	int file_number = 0;
 
 	// Check if the files have the extension ".sst"
-	regex basic_regex(".*\\.sst");
-	smatch base_match;
 	string file_name;
-	for (auto &p : filesystem::directory_iterator(path))
-	{
-		file_name = p.path();
-		if (regex_match(file_name, base_match, basic_regex))
-			++file_number;
-	}
-
+	file_number = level_sstable_num[level].size();
 	// If the file number exceed the limit, it should do compaction
 	if (file_number > limit)
 	{
@@ -434,14 +402,10 @@ bool KVStore::compaction(int level, int filenumber, int limit)
 	string extension = ".sst";
 	vector<string> higher_level_sstable_path;
 	key_range k_range;
-	int file_id;
-
-	for (auto &p : std::filesystem::directory_iterator(next_level_path))
-	{
-		sstable_file_path = p.path();
-		file_id = get_id(sstable_file_path.c_str());
-		k_range = get_key_range(file_id);
-
+	// Use in memory index
+	for (auto it = level_sstable_num[level + 1].begin(); it != level_sstable_num[level + 1].end(); ++it) {
+		sstable_file_path = next_level_path + to_string(*it) + ".sst";
+		k_range = get_key_range(*it);
 		if ((k_range._max < min_key) || (k_range._min > max_key))
 		{
 			continue;
@@ -893,17 +857,14 @@ vector<string> KVStore::select_sstable_path(int level, int filenumber, int limit
 	int selected_num = 0;
 
 	string level_path = sstable_base_dir + "/level" + to_string(level) + "/";
-	for (auto &p : std::filesystem::directory_iterator(level_path))
-	{
-		// TODO: how to select files when it is not the first layer
-		if (level != 0 && selected_num >= filenumber - limit)
-		{
-			continue;
-		}
 
+	for (auto it = level_sstable_num[level].begin(); it != level_sstable_num[level].end(); it++) {
+		if (level != 0 && selected_num >= filenumber - limit) {
+			break;
+		}
 		++selected_num;
-		sstable_file_path = p.path();
-		path_vec.push_back(sstable_file_path);
+		string path = level_path + to_string(*it) + ".sst";
+		path_vec.push_back(path);
 	}
 	return path_vec;
 }
@@ -913,18 +874,6 @@ vector<string> KVStore::select_sstable_path(int level, int filenumber, int limit
  */
 vector<int> KVStore::get_level_sstable_num(int level)
 {
-	// string sstable_file_path;
-	// string level_path = sstable_base_dir + "/level" + to_string(level) + "/";
-	// vector<int> sstable_num;
-
-	// // cout << "level: " << level <<endl;
-	// for (auto &p : std::filesystem::directory_iterator(level_path))
-	// {
-	// 	sstable_file_path = p.path();
-	// 	sstable_num.push_back(get_id(sstable_file_path));
-	// }
-	// return sstable_num;
-	// return level_sstable_num[level];
 	if (level >= level_sstable_num.size()) {
 		return vector<int>();
 	}
