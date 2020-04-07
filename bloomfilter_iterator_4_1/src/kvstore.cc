@@ -602,39 +602,28 @@ bool KVStore::save_as_sstable(
 		ofstream out;
 		uint64_t offset = 0;
 		vector<key_offset> key_offset_vector; // key value pair
-		vector<Entry_time> value_vector;
-		Entry_time cur_key_value;
 
 		bloomfilter bf = bloomfilter(sstable_num);
-
-		while ((offset <= this->mem_limit || from_memtable) && index < m_size)
-		{
-			cur_key_value = merged[index];
-
-			key_offset_vector.push_back(key_offset(cur_key_value._key, offset));
-			value_vector.push_back(cur_key_value);
-
-			offset += sizeof(cur_key_value._key) + cur_key_value._value.length();
-
-			// Add to bloomfilter
-			bf.add(cur_key_value._key);
-			index++;
-		}
-
-		// Open the file in binary form
+				// Open the file in binary form
 		out.open(file_path, ios::binary | ios::out); // Open the file in binary format
 
 		if (!out.is_open())
 			return false;
-		
-		// Batch write to speed up
-		for (const auto &cur_key_value : value_vector)
+
+		while ((offset <= this->mem_limit || from_memtable) && index < m_size)
 		{
+
+			key_offset_vector.push_back(key_offset(merged[index]._key, offset));
 			// Write key
-			out.write((char *)&(cur_key_value._key), sizeof(cur_key_value._key));
+			out.write((char *)&(merged[index]._key), sizeof(merged[index]._key));
 			// Write value
-			out.write((char *)&(cur_key_value._value[0]), cur_key_value._value.length());
+			out.write((char *)&(merged[index]._value[0]), merged[index]._value.length());
+			offset += sizeof(merged[index]._key) + merged[index]._value.length();
+			// Add to bloomfilter
+			bf.add(merged[index]._key);
+			index++;
 		}
+
 		out.close();
 
 		int size = key_offset_vector.size();

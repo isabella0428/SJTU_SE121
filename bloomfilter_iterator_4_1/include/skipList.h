@@ -16,7 +16,7 @@ private:
         V value;
         vector<Node *> forward;         // Store the forward node, forward[0] means the next node on level0
 
-        Node(K key, V value, int level) : key(key), value(value), forward(level + 1, nullptr) {}
+        Node(K key, const V &value, int level) : key(key), value(value), forward(level + 1, nullptr) {}
         Node(int level): forward(level + 1, nullptr) {}               
     };
 
@@ -146,7 +146,7 @@ public:
     }
 
     // Put key and value in skipList
-    bool put(K key, V value)
+    bool put(K key, const V& value)
     {
         // Get random level
         int nodeLevel = randomLevel();
