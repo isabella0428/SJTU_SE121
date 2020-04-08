@@ -528,7 +528,7 @@ vector<Entry_time> KVStore::k_merge_sort(vector<vector<Entry_time>> &all_sstable
 			pq.pop();
 		}
 
-		merged.push_back(*e);
+		merged.push_back(std::move(*e));
 	}
 	return merged;
 }

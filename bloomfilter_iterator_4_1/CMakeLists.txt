@@ -8,7 +8,7 @@ set(CMAKE_BUILD_TYPE Debug)
 
 SET(CMAKE_SYSTEM_NAME Linux)
 
-SET(CMAKE_CXX_COMPILER /usr/local/bin/g++-9)
+SET(CMAKE_CXX_COMPILER /usr/bin/g++-9)
 
 set(CMAKE_CXX_FLAGS "-std=c++17")
 
