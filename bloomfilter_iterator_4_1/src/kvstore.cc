@@ -18,12 +18,13 @@ KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
 {
 	// Initialize memtable
 	memtable = new SkipList<uint64_t, string>();
-	mem_limit = 2000000;
+	mem_limit = 1 << 21;
 	current_size = 0;
 	sstable_num = 0;
 	sstable_base_dir = dir;
 	max_level = -1;
-
+	// Allocate big buffer for batch reading and writing
+	buffer = new char[2 * mem_limit];
 	recover();
 
 	// For level file picking
@@ -172,6 +173,7 @@ KVStore::~KVStore()
 {
 	// Clean directory
 	filesystem::remove_all(this->sstable_base_dir);
+	delete []buffer;
 	delete this->memtable;
 }
 
@@ -568,26 +570,31 @@ bool KVStore::save_as_sstable(
 		vector<key_offset> key_offset_vector; // key value pair
 
 		bloomfilter bf = bloomfilter(sstable_num);
-				// Open the file in binary form
-		out.open(file_path, ios::binary | ios::out); // Open the file in binary format
-
-		if (!out.is_open())
-			return false;
 
 		while ((offset <= this->mem_limit || from_memtable) && index < m_size)
 		{
 
 			key_offset_vector.push_back(key_offset(merged[index]._key, offset));
-			// Write key
-			out.write((char *)&(merged[index]._key), sizeof(merged[index]._key));
-			// Write value
-			out.write((char *)&(merged[index]._value[0]), merged[index]._value.length());
-			offset += sizeof(merged[index]._key) + merged[index]._value.length();
+			int len1 = sizeof(merged[index]._key);
+			int len2 = merged[index]._value.length();
+
+			// Copy key to buffer
+			bcopy((char *)&(merged[index]._key), buffer + offset, len1);
+			offset += len1;
+			// Copy value to buffer
+			bcopy((char *)&(merged[index]._value[0]), buffer + offset, len2);
+			offset += len2;
 			// Add to bloomfilter
 			bf.add(merged[index]._key);
 			index++;
 		}
+		// Open the file in binary form
+		out.open(file_path, ios::binary | ios::out); // Open the file in binary format
 
+		if (!out.is_open())
+			return false;
+		// Batch writing
+		out.write(buffer, offset);
 		out.close();
 
 		int size = key_offset_vector.size();
@@ -666,6 +673,14 @@ vector<Entry_time> KVStore::read_key_offset_from_file(string file_path, int leve
 	char *value;
 	int key_value_length;
 
+	// Read whole file into buffer
+	in.seekg(0, ios::end);
+	int fileLength = in.tellg();
+	in.seekg(0, ios::beg);
+	in.read(buffer, fileLength);
+	in.close();
+
+	int offset = 0;
 	int a = v.size();
 	for (int i = 0; i < v.size() - 1; ++i)
 	{
@@ -677,9 +692,11 @@ vector<Entry_time> KVStore::read_key_offset_from_file(string file_path, int leve
 			cerr << "Allocate string with len < 0 in read_key_offset_from_file()" << endl;
 			exit(-1);
 		}
+		bcopy(buffer + offset, &key, 8);
+		offset += 8;
+		bcopy(buffer + offset, value, key_value_length - sizeof(uint64_t));
+		offset += key_value_length - sizeof(uint64_t);
 
-		in.read((char *)&key, 8);
-		in.read(value, key_value_length - sizeof(uint64_t));
 		value[key_value_length - sizeof(uint64_t)] = '\0';
 		// Add level info for each entry (0: lower level, 1: upper level)
 		all_key_value[i] = Entry_time(
@@ -690,13 +707,9 @@ vector<Entry_time> KVStore::read_key_offset_from_file(string file_path, int leve
 		delete[] value;
 	}
 
-	// Read the last key_value
-	in.read((char *)&key, 8);
-	// Calculate the total length of the file since a binary file doesn't have eod
-	in.seekg(0, ios::end);
-	int length = in.tellg();
-	int offset = v[v.size() - 1]._offset;
-	int value_length = length - offset - 8;
+	// Read the last key
+	bcopy(buffer + offset, &key, 8);
+	int value_length = fileLength - v[v.size() - 1]._offset - 8;
 	if (value_length >= 0) {
 		value = new char[value_length + 1];
 	} else {
@@ -705,16 +718,14 @@ vector<Entry_time> KVStore::read_key_offset_from_file(string file_path, int leve
 		cerr << "Allocate last string with len < 0 in read_key_offset_from_file()" << endl;
 		exit(-1);
 	}
-
-	in.seekg(offset + 8, ios::beg);
-	in.read(value, value_length);
+	// Read the last value
+	bcopy(buffer + offset + 8, value, value_length);
 	value[value_length] = '\0';
 
 	all_key_value[v.size() - 1] = Entry_time(key, string(value), index._timestamp, level);
 
 	delete[] value;
 
-	in.close();
 	return all_key_value;
 }
 

@@ -18,6 +18,7 @@ private:
 	int current_size;
 	int sstable_num;
 	int max_level;
+	char *buffer;
 	vector<bloomfilter> all_sstable_bmfilter;
 	vector<sstable_index> all_sstable_index; 
 	vector<set<int>> level_sstable_num;
