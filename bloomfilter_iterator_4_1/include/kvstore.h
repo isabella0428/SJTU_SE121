@@ -29,7 +29,7 @@ private:
 
 	bool check_level(int level, int limit);
 
-	bool save_as_sstable(const vector<Entry_time> &vec, int level, bool from_memtable);
+	bool save_as_sstable(const vector<Entry_time> &vec, int level);
 
 	bool compaction(int level, int filenumber, int limit);
 

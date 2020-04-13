@@ -172,7 +172,7 @@ bool KVStore::recover_sstable_level() {
 
 /**
  * Release all resources
- * --Clean all sstables
+ * -- Store memory table
  * --Clear the memory table
  */
 KVStore::~KVStore()
@@ -188,7 +188,7 @@ KVStore::~KVStore()
 	if (key_value_vec.size() > 0)
 	{
 		// Store the elements to sstable
-		if (!save_as_sstable(key_value_vec, 0, true))
+		if (!save_as_sstable(key_value_vec, 0))
 		{
 			cout << "Failed to save as sstable!" << endl;
 			return;
@@ -226,7 +226,7 @@ void KVStore::put(uint64_t key, const std::string &s)
 		}
 
 		// Store the elements to sstable
-		if (!save_as_sstable(key_value_vec, 0, true))
+		if (!save_as_sstable(key_value_vec, 0))
 		{
 			cout << "Failed to save as sstable!" << endl;
 			return;
@@ -497,7 +497,7 @@ bool KVStore::merge_files(vector<string> file1, vector<string> file2, int next_l
 		sstable_level.erase(get_id(path));
 	}
 
-	save_as_sstable(k_merge_sort(all_sstable_content), next_level, false);
+	save_as_sstable(k_merge_sort(all_sstable_content), next_level);
 
 	return check_level(next_level, level_limit(next_level));
 }
@@ -565,7 +565,7 @@ vector<Entry_time> KVStore::k_merge_sort(const vector<vector<Entry_time>> &all_s
  * Notice that when it is converted from memtable, it size can be a little higher than limit
  */
 bool KVStore::save_as_sstable(
-	const vector<Entry_time> &merged, int level, bool from_memtable)
+	const vector<Entry_time> &merged, int level)
 {
 	bool operation_result = true;
 	int m_size = merged.size();
@@ -593,7 +593,7 @@ bool KVStore::save_as_sstable(
 
 		bloomfilter bf = bloomfilter(sstable_num);
 
-		while ((offset <= this->mem_limit || from_memtable) && index < m_size)
+		while (offset <= this->mem_limit && index < m_size)
 		{
 			cur_key_value = merged[index];
 

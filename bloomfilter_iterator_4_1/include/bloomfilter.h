@@ -9,7 +9,7 @@ class bloomfilter {
     int *array; // bit vector
 
     public:
-        bloomfilter(int no, int k = 4, int length = 4000);
+        bloomfilter(int no, int k = 3, int length = 10000);
         int *getArray() {return array;}
         int getArrayLength() {return m;}
         void setArray(int i, int value) {array[i] = value;}
