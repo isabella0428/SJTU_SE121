@@ -16,8 +16,8 @@ private:
         V value;
         vector<Node *> forward;         // Store the forward node, forward[0] means the next node on level0
 
-        Node(K key, V value) : key(key), value(value) {}
-        Node() {}               
+        Node(K key, const V &value, int level) : key(key), value(value), forward(level + 1, nullptr) {}
+        Node(int level): forward(level + 1, nullptr) {}               
     };
 
     Node *header;
@@ -28,11 +28,7 @@ private:
      */
     void initNode(Node *&node, int level)
     {
-        node = new Node();
-        for (int i = 0; i <= level; ++i)
-        {
-            node->forward.push_back(nullptr);
-        }
+        node = new Node(level);
     }
 
     /**
@@ -40,11 +36,7 @@ private:
      */
     void initNode(Node *&node, int level, K key, V value)
     {
-        node = new Node(key, value);
-        for (int i = 0; i <= level; ++i)
-        {
-            node->forward.push_back(nullptr);
-        }
+        node = new Node(key, value, level);
     }
 
     /**
@@ -126,6 +118,17 @@ public:
         return all_elements;
     }
 
+    vector<Entry_time> getAllElement(int sstable_num) {
+        vector<Entry_time> all_elements;
+        Node *cur = header->forward[0];
+        while(cur != trailer) {
+            all_elements.push_back(Entry_time(cur->key, cur->value, sstable_num));
+            cur = cur->forward[0];
+        }
+
+        return all_elements;
+    }
+
     // clear skiplist
     void clear()
     {
@@ -143,7 +146,7 @@ public:
     }
 
     // Put key and value in skipList
-    bool put(K key, V value)
+    bool put(K key, const V& value)
     {
         // Get random level
         int nodeLevel = randomLevel();

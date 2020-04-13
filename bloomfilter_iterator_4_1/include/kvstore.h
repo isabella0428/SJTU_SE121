@@ -18,8 +18,11 @@ private:
 	int current_size;
 	int sstable_num;
 	int max_level;
+	char *buffer;
+	char *offsetBuffer;
 	vector<bloomfilter> all_sstable_bmfilter;
 	vector<sstable_index> all_sstable_index; 
+	vector<set<int>> level_sstable_num;
 	string sstable_base_dir;
 	map<int, int> sstable_level;
 
@@ -37,7 +40,7 @@ private:
 
 	int get_id(string path);
 
-	bool merge_files(vector<string> lower_layer_sstable_path, vector<string> higher_layer_sstable_path, int level);
+	bool merge_files(const vector<int> &lower_layer_sstable_num, const vector<int> &higher_layer_sstable_num, int level);
 
 	bool binary_search_sstable(const sstable_index &sstable_index, uint64_t key, string *value, int sstable_id, int &timestamp);
 
@@ -46,11 +49,9 @@ private:
 	vector<Entry_time> merge_two_files(
 		vector<Entry_time> file1, vector<Entry_time> file2);
 
-	vector<string> select_sstable_path(int level, int filenumber, int limit);
+	vector<int> select_level_sstable(int level, int filenumber, int limit);
 
-	vector<int> get_level_sstable_num(int level);
-
-	vector<Entry_time> k_merge_sort(const vector< vector<Entry_time> > &all_sstable_content);
+	vector<Entry_time> k_merge_sort(vector< vector<Entry_time> > &all_sstable_content);
 
 	// Functions for persistence
 	void recover();

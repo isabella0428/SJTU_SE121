@@ -40,7 +40,7 @@ struct sstable_index
     vector<key_offset> _vector;
     uint64_t _max, _min;
     int _timestamp;
-    sstable_index(vector<key_offset> q, int timeStamp, uint64_t max, uint64_t min)
+    sstable_index(const vector<key_offset> &q, int timeStamp, uint64_t max, uint64_t min)
         : _vector(q), _timestamp(timeStamp), _max(max), _min(min) {}
     sstable_index() {}
 };
@@ -65,11 +65,11 @@ struct Entry_time
     string _value;
     int _time;
     int _level;
-    Entry_time(uint64_t key, string value, int time) : _key(key), _value(value), _time(time), _level(-1) {}
-    Entry_time(uint64_t key, string value, int time, int level) : _key(key), _value(value), _time(time), _level(level){}
+    Entry_time(uint64_t key, const string &value, int time) : _key(key), _value(value), _time(time), _level(-1) {}
+    Entry_time(uint64_t key, const string &value, int time, int level) : _key(key), _value(value), _time(time), _level(level){}
     Entry_time(const Entry_time &bk) : _key(bk._key), _value(bk._value), _time(bk._time), _level(bk._level) {}
     Entry_time() {}
-    friend bool operator>(Entry_time e1, Entry_time e2)
+    friend bool operator>(const Entry_time &e1, const Entry_time &e2)
     {   
         if ((e1._key < e2._key) || ((e1._key == e2._key) && (e1._level < e2._level)) || ((e1._key == e2._key) && (e1._time > e2._time)))
         {
