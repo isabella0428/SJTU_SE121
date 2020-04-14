@@ -132,16 +132,18 @@ bool KVStore::recover_sstable_level() {
 	regex sst_regex(".*\\.sst");
 	smatch base_match;
 	string level_path, file_path;
-	level_sstable_num.push_back(set<int>());
 	for (auto &p : filesystem::directory_iterator(path))
 	{
-		level_sstable_num.push_back(set<int>());
 		// Find level directories
 		level_path = p.path();
-
 		if (regex_match(level_path, base_match, level_regex))
 		{
 			int level = get_id(level_path);
+			if (level >= level_sstable_num.size()) {
+				for (int i = level_sstable_num.size(); i <= level; i++) {
+					level_sstable_num.push_back(set<int>());
+				}
+			}
 			if (max_level < level)
 			{
 				max_level = level;
