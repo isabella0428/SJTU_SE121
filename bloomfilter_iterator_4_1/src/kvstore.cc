@@ -174,36 +174,16 @@ bool KVStore::recover_sstable_level() {
  */
 KVStore::~KVStore()
 {
-<<<<<<< HEAD
-	vector<Entry_time> key_value_vec;
-
-	for (Entry<uint64_t, string> e : this->memtable->getAllElement())
-	{
-		key_value_vec.push_back(
-			Entry_time(e._key, e._value, sstable_num));
-	}
-
-	if (key_value_vec.size() > 0)
-	{
-		// Store the elements to sstable
-		if (!save_as_sstable(key_value_vec, 0))
-		{
-			cout << "Failed to save as sstable!" << endl;
-			return;
-		}
-	}
 
 	for (int i = 0; i < sstable_num; ++i)
 	{
 		all_sstable_bmfilter[i].clear();
 	}
 
-=======
 	// Clean directory
 	filesystem::remove_all(this->sstable_base_dir);
 	delete []buffer;
 	delete []offsetBuffer;
->>>>>>> 742d6d048286d3c51c427e71b3c9683f8382992a
 	delete this->memtable;
 }
 
