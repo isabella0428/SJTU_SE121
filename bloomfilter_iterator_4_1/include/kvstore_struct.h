@@ -40,7 +40,7 @@ struct sstable_index
     vector<key_offset> _vector;
     uint64_t _max, _min;
     int _timestamp;
-    sstable_index(vector<key_offset> q, int timeStamp, uint64_t max, uint64_t min)
+    sstable_index(const vector<key_offset> &q, int timeStamp, uint64_t max, uint64_t min)
         : _vector(q), _timestamp(timeStamp), _max(max), _min(min) {}
     sstable_index() {}
 };
