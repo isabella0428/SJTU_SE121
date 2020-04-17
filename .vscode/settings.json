@@ -1,8 +1,0 @@
-{
-    "files.associations": {
-        "*.ml": "ocaml",
-        "*.mli": "ocaml",
-        "*.cu": "cpp",
-        "filesystem": "cpp"
-    }
-}

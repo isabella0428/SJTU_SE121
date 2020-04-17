@@ -1,5 +1,0 @@
-/Users/isabella/Desktop/SJTU-courses/third_2/Algorithm/3_31/bloomfilter_iterator/CMakeFiles/rebuild_cache.dir
-/Users/isabella/Desktop/SJTU-courses/third_2/Algorithm/3_31/bloomfilter_iterator/CMakeFiles/edit_cache.dir
-/Users/isabella/Desktop/SJTU-courses/third_2/Algorithm/3_31/bloomfilter_iterator/CMakeFiles/TestIterator.dir
-/Users/isabella/Desktop/SJTU-courses/third_2/Algorithm/3_31/bloomfilter_iterator/CMakeFiles/Test2.dir
-/Users/isabella/Desktop/SJTU-courses/third_2/Algorithm/3_31/bloomfilter_iterator/CMakeFiles/Test1.dir

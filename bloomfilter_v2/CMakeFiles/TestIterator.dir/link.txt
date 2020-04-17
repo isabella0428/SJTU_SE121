@@ -1,1 +1,0 @@
-/usr/local/bin/g++-9  -std=c++17 -g -Wl,-search_paths_first -Wl,-headerpad_max_install_names  CMakeFiles/TestIterator.dir/test/testIterator.cc.o CMakeFiles/TestIterator.dir/src/kvstore.cc.o CMakeFiles/TestIterator.dir/src/bloomfilter.cc.o CMakeFiles/TestIterator.dir/src/MurmurHash3.cc.o  -o TestIterator 
