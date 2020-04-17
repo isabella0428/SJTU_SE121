@@ -28,5 +28,42 @@ We will use all files with `.cc`, `.cpp`, `.cxx` suffixes to build correctness a
 
 For the test files, of course you could modify it to debug your programs. But remember to change it back when you are testing.
 
-Good luck :)
+
+
+#### Test
+
+1. ##### correctnessTest
+
+```
+1 cd ./project1_kvstore
+2 cmake -D cmake -D CMAKE_CXX_COMPILER=""(Your gcc path, gcc version>=9)
+3 make
+4 ./correctnessTest
+```
+
+
+
+2. ##### persistenceTest
+
+Persistence data preparation
+
+```
+1 cd ./project1_kvstore
+2 cmake -D cmake -D CMAKE_CXX_COMPILER=""(Your gcc path, gcc version>=9)
+3 make
+4 ./persistenceTest
+```
+
+Persistence Test
+
+```
+1 cd ./project1_kvstore
+2 cmake -D cmake -D CMAKE_CXX_COMPILER=""(Your gcc path, gcc version>=9)
+3 make
+4 ./persistenceTest -t
+```
+
+
+
+
 
