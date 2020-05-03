@@ -53,18 +53,24 @@ public:
 	 */
 	vector<int> getNumberFromString(string s);
 
+
+
 	/**
 	 * Print path to outputFile, using parent array
 	 */
-	void printPathToFile(const char *outputFile, vector <vector<int> > &parent, 
-		int dist, int node_num, int src, int dst, bool is_run1);
+	void printPathToFile(const char *outputFile, 
+		int min_dist, vector< vector<int> > &all_paths, bool is_run1);
 
+	/**
+	 * DFS to return the path with parent array
+	 */
+	vector< vector<int> > dfs(vector< vector<int> > &parent, int src, int dst);
 
 	/**
 	 *  DFS helper function to get path with parent array
 	 */
-	void dfs(vector< vector<int> > &parent, vector<int> temp, 
-		vector< vector<int> > &all_paths, int cur_node, int src);
+	void dfs(vector< vector<int> > &parent, vector<int> temp,
+				vector< vector<int> > &all_paths, int cur_node, int src);
 
 	struct Edge {
 		int start;

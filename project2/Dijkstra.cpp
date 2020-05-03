@@ -161,12 +161,19 @@ void DijkstraProject2::run1(int testcase, const char *outputFile)
 			}
 		}
 	}
-	printPathToFile(outputFile, parent, dist[dst], node,src, dst, true);
+
+	vector< vector<int> > all_paths = dfs(parent, src, dst);
+	printPathToFile(outputFile, dist[dst], all_paths, true);
 }
 
-bool cmp(DijkstraProject2::Edge e1, DijkstraProject2::Edge e2)
+bool cmpAscending(DijkstraProject2::Edge e1, DijkstraProject2::Edge e2)
 {
 	return e1.value < e2.value;
+}
+
+bool cmpDescending(DijkstraProject2::Edge e1, DijkstraProject2::Edge e2)
+{
+	return e1.value > e2.value;
 }
 
 void DijkstraProject2::run2(int testcase, const char* outputFile)
@@ -189,45 +196,69 @@ void DijkstraProject2::run2(int testcase, const char* outputFile)
 		}
 	}
 
-	sort(sorted_edges.begin(), sorted_edges.end(), cmp);
+	vector< vector<int> > all_paths;
+	int min_dist = INT_MAX;
 
-	// Initialize parent and dist
-	for (int i = 0; i < node_num; ++i)
-	{
-		vector<int> temp;
-		temp.push_back(-1);
-		parent.push_back(temp);
-		dist.push_back(INT_MAX);
-		visited.push_back(false);
-	}
+	for (int i = 0; i < 2; ++i) {
+		// Ascending Path
+		if (i == 0) {
+			sort(sorted_edges.begin(), sorted_edges.end(), cmpAscending);
+		} else {
+			sort(sorted_edges.begin(), sorted_edges.end(), cmpDescending);
+		}
 
-	int src = 0;
-	int dst = node_num-1;
+		// Initialize parent and dist
+		for (int i = 0; i < node_num; ++i)
+		{
+			vector<int> temp;
+			temp.push_back(-1);
+			parent.push_back(temp);
+			dist.push_back(INT_MAX);
+			visited.push_back(false);
+		}
 
-	int nodes_to_visit = node_num - 1;
-	visited[src] = true;
-	dist[src] = 0;
+		int src = 0;
+		int dst = node_num - 1;
 
-	for (int i = 0; i < sorted_edges.size(); ++i) {
-		DijkstraProject2::Edge e = sorted_edges[i];
-		int start = e.start;
-		int end = e.end;
-		if (visited[start]) {
-			if (dist[start] + e.value <= dist[end]) {
-				if (dist[start] + e.value == dist[end]) {
-					parent[end].push_back(start);
-				} else {
-					vector<int> par;
-					par.push_back(start);
-					parent[end] = par;
+		int nodes_to_visit = node_num - 1;
+		visited[src] = true;
+		dist[src] = 0;
+
+		for (int i = 0; i < sorted_edges.size(); ++i)
+		{
+			DijkstraProject2::Edge e = sorted_edges[i];
+			int start = e.start;
+			int end = e.end;
+			if (visited[start])
+			{
+				if (dist[start] + e.value <= dist[end])
+				{
+					if (dist[start] + e.value == dist[end])
+					{
+						parent[end].push_back(start);
+					}
+					else
+					{
+						vector<int> par;
+						par.push_back(start);
+						parent[end] = par;
+					}
+					dist[end] = dist[start] + e.value;
 				}
-				dist[end] = dist[start] + e.value;
+				visited[end] = true;
 			}
-			visited[end] = true;
+		}
+
+		vector< vector<int> > cur_path = dfs(parent, src, dst);
+
+		if (dist[dst] < min_dist)
+		{
+			all_paths = cur_path;
+			min_dist = dist[dst];
 		}
 	}
 
-	printPathToFile(outputFile, parent, dist[dst], node_num, src, dst, false);
+	printPathToFile(outputFile, min_dist, all_paths, false);
 	
 }
 
@@ -247,15 +278,17 @@ vector<int> DijkstraProject2::getNumberFromString(const string s) {
 	return nums;
 }
 
-void DijkstraProject2::printPathToFile(const char* outputFile, vector< vector<int> > &parent, 
-		int dist, int node_num, int src, int dst, bool is_run1) {
-
+vector< vector<int> > DijkstraProject2::dfs(vector< vector<int> > &parent, int src, int dst) {
 	vector< vector<int> > all_paths;
 	vector<int> temp;
 
 	temp.push_back(dst);
 	dfs(parent, temp, all_paths, dst, src);
+	return all_paths;
+}
 
+void DijkstraProject2::printPathToFile(const char* outputFile, int min_dist, 
+		vector< vector<int> > &all_paths, bool is_run1) {
 	ofstream out(outputFile, ios::app);
 	if (!out.is_open()) {
 		cerr << "Failed to open " << outputFile << endl;
@@ -263,7 +296,7 @@ void DijkstraProject2::printPathToFile(const char* outputFile, vector< vector<in
 	}
 
 	// First line: Min path length
-	out << dist << endl;
+	out << min_dist << endl;
 	// Second line: Path number
 	out << all_paths.size() << endl;
 
