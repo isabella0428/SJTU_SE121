@@ -15,25 +15,36 @@ class DijkstraProject2 {
 private:
 	//You can declare your graph structure here.
 	// dist/parent{1, 2} for run1 and run2
-	vector< vector< vector<int> > > all_edges;	// all_edges[i] should be the edge array for different test cases
+	struct endEdge
+	{
+		int end;
+		int value;
+		endEdge(int e = -1, int v = INT_MAX) : end(e), value(v) {}
+	};
+
+	struct nodeDist {
+		int node;
+		int dist;
+		nodeDist(int n, int d) : node(n), dist(d) {}
+	};
+
+	struct Cmp {
+		bool operator()(const nodeDist &a, const nodeDist &b) {
+			return a.dist > b.dist;
+		}
+	};
+
+	vector< vector< vector<endEdge> > > all_edges;
 	vector<int> all_node_num;
 	int test_case_num;
 
-public:
-
-	/**
-	 * Read graph from Param:`inputfile`.
-	 * 
-	 */
-	void readFromFile(const char* inputfile="input.txt");
-	
 	/**
 	 * Part 1, implement Dijkstra algorithm to finish Part 1
 	 * and save the result to Param:`outputFile`.
 	 * Save the path as: node_1,node_2...node_n. (seperate nodes with comma)
 	 *
 	 */
-	void run1(int testcase, const char* outputFile);
+	void run1(int testcase, const char *outputFile);
 
 	/**
 	 * Part 2, find the monotonically increasing path to finish Part 2
@@ -41,25 +52,18 @@ public:
 	 * Save the path as: node_1,node_2...node_n. (seperate nodes with comma)
 	 *
 	 */
-	void run2(int testcase, const char* outputFile);
-
-	/**
-	 * Integrate run1 and run2
-	 */
-	void run(const char *outputFile = "output.txt");
+	void run2(int testcase, const char *outputFile);
 
 	/**
 	 * Helper function to split the string with ',' and return in the form of vector
 	 */
 	vector<int> getNumberFromString(string s);
 
-
-
 	/**
 	 * Print path to outputFile, using parent array
 	 */
-	void printPathToFile(const char *outputFile, 
-		int min_dist, vector< vector<int> > &all_paths, bool is_run1);
+	void printPathToFile(const char *outputFile,
+						 int min_dist, vector <vector<int> > &all_paths, bool is_run1);
 
 	/**
 	 * DFS to return the path with parent array
@@ -70,12 +74,16 @@ public:
 	 *  DFS helper function to get path with parent array
 	 */
 	void dfs(vector< vector<int> > &parent, vector<int> temp,
-				vector< vector<int> > &all_paths, int cur_node, int src);
+			 vector< vector<int> > &all_paths, int cur_node, int src);
 
-	struct Edge {
-		int start;
-		int end;
-		int value;
-		Edge(int s, int e, int v):start(s),end(e), value(v) {}
-	};
+public:
+	/**
+	 * Read graph from Param:`inputfile`.
+	 */
+	void readFromFile(const char *inputfile = "input.txt");
+
+	/**
+	 * Integrate run1 and run2
+	 */
+	void run(const char *outputFile = "output.txt");
 };
