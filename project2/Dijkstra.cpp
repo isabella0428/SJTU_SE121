@@ -105,12 +105,17 @@ void DijkstraProject2::run1(int testcase, const char *outputFile)
 	while(!q.empty()) {
 		nodeDist nd = q.top();
 		q.pop();
+		visited[nd.node] = true;
 
 		int n = nd.node;
 		int dt = nd.dist;
 
 		for (endEdge ee : edges[n]) {
 			int edge_val = ee.value;
+			if (visited[ee.end]) {
+				continue;
+			}
+
 			if (dist[ee.end] == INT_MAX || dist[ee.end] >= dist[n] + edge_val) {
 				if (dist[ee.end] == dist[n] + edge_val) {
 					parent[ee.end].push_back(n);
