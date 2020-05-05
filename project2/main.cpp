@@ -7,6 +7,6 @@
 int main()
 {
     DijkstraProject2 pro;
-    pro.readFromFile();
+    pro.readFromFile("selfTest/1.in");
     pro.run();
 }
