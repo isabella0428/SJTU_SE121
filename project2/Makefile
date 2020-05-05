@@ -5,8 +5,8 @@ OBJS := $(patsubst %cpp,%o,$(SRCS))
 TARGET := Dijkstra
 all:$(TARGET)
 %.o:%.cpp
-	$(CC) $(CFLAGS) -c -g -Ddebug $<
+	$(CC) $(CXXFLAGS) -c -g -Ddebug $<
 $(TARGET):$(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CXXFLAGS) -o $@ $^
 clean:
 	rm -rf $(TARGET) *.o
