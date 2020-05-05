@@ -4,3 +4,7 @@ bloomfilter_iterator_4_1/TestIterator
 bloomfilter_iterator_4_1/TestPQ
 bloomfilter_iterator_4_1/data
 .vscode
+project2/Dijkstra
+project2/Dijkstra.o
+project2/main.o
+project2/test

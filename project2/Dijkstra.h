@@ -16,12 +16,6 @@ class DijkstraProject2 {
 private:
 	//You can declare your graph structure here.
 	// dist/parent{1, 2} for run1 and run2
-	struct endEdge
-	{
-		int end;
-		int value;
-		endEdge(int e = -1, int v = INT_MAX) : end(e), value(v) {}
-	};
 
 	struct nodeDist {
 		int node;
@@ -29,8 +23,29 @@ private:
 		nodeDist(int n, int d) : node(n), dist(d) {}
 	};
 
-	struct Cmp {
+	struct nodeDistVal {
+		int node;
+		int dist;
+		int val;
+		nodeDistVal(int n, int d, int v):node(n), dist(d), val(v) {}
+	};
+
+	struct endEdge
+	{
+		int end;
+		int value;
+		endEdge(int e = -1, int v = INT_MAX) : end(e), value(v) {}
+	};
+
+	struct Cmp1 {
 		bool operator()(const nodeDist &a, const nodeDist &b) {
+			return a.dist > b.dist;
+		}
+	};
+
+
+	struct Cmp2 {
+		bool operator()(const nodeDistVal &a, const nodeDistVal &b) {
 			return a.dist > b.dist;
 		}
 	};
@@ -76,6 +91,16 @@ private:
 	 */
 	void dfs(vector< vector<int> > &parent, vector<int> temp,
 			 vector< vector<int> > &all_paths, int cur_node, int src);
+
+	static bool cmpAscending(DijkstraProject2::endEdge e1, DijkstraProject2::endEdge e2)
+	{
+		return e1.value < e2.value;
+	}
+
+	static bool cmpDescending(DijkstraProject2::endEdge e1, DijkstraProject2::endEdge e2)
+	{
+		return e1.value > e2.value;
+	}
 
 public:
 	/**
