@@ -157,13 +157,6 @@ void DijkstraProject2::run2(int testcase, const char* outputFile)
 			}
 		}
 
-		for (int i = 0; i < node_num; ++i) {
-			for (int j = 0; j < edges[i].size(); ++j) {
-				cout << i << " " << edges[i][j].end << " " << edges[i][j].value << endl;
-			}
-		}
-		cout << endl;
-
 		int src = 0;
 		int dst = node_num - 1;
 
@@ -244,13 +237,6 @@ void DijkstraProject2::run2(int testcase, const char* outputFile)
 				}
 			}
 		}
-
-		for (int i = 0; i < node_num; ++i) {
-			for (int j = 0; j < parent[i].size(); ++j) {
-				cout << i << " " << parent[i][j] << endl;
-			}
-		}
-		cout << endl;
 
 		if (dist[dst] != INT_MAX && dist[dst] <= min_dist) {
 			vector< vector<int> > cur_paths = dfs(parent, src, dst);
