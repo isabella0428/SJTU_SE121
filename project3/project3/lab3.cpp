@@ -69,8 +69,8 @@ void swap(vector< vector<double> >& mat, int i, int j) {
 }
 
 void printMat(vector< vector<double> > mat) {
-	for (int i = 0; i < mat.size(); ++i) {
-		for (int j = 0; j < mat[0].size(); ++j) {
+	for (uint i = 0; i < mat.size(); ++i) {
+		for (uint j = 0; j < mat[0].size(); ++j) {
 			cout << mat[i][j] << " ";
 		}
 		cout << endl;
@@ -121,7 +121,7 @@ vector<double> gauss_jordan( /* augumented matrix */ vector< vector<double> > ma
 	for (int j = n_variable - 2; j >= 0; --j)
 	{
 		double ans = mat[j][lastIndex-1];
-		for (int i = 0; i < reversed_answer.size(); ++i) {
+		for (uint i = 0; i < reversed_answer.size(); ++i) {
 			ans -= mat[j][n_variable -i -1] * reversed_answer[i];
 			cout << mat[j][n_variable - i-1] << endl;
 			cout << reversed_answer[i] << endl;
@@ -138,105 +138,123 @@ vector<double> gauss_jordan( /* augumented matrix */ vector< vector<double> > ma
 
 double func3(int n,int hp,vector<int>& damage,vector<int>& edges) {
 	// Redo edges
-	vector< vector<int> > allEdges;
+	vector<vector<int>> allEdges;
+	// Record the degree
+	vector<double> degree(n + 1, 0.0);
 	for (int i = 0; i <= n; ++i) {
 		vector<int> temp;
 		allEdges.push_back(temp); 
 	}
 
-	for (int i = 0; i < edges.size(); i += 2) {
+	for (uint i = 0; i < edges.size(); i += 2) {
 		int start = edges[i];
 		int end = edges[i+1];
+		// Insert edges
 		allEdges[start].push_back(end);
 		allEdges[end].push_back(start);
+		// Increase degree
+		degree[start]++;
+		degree[end]++;
 	}
 
-	for (int i = 0; i < allEdges.size(); ++i) {
+	for (uint i = 0; i < allEdges.size(); ++i) {
 		std::sort(allEdges[i].begin(), allEdges[i].end());
 	}
 
-	double dp[hp+1][n+1];
+	// Initialize coefficient array
+	vector<vector<double>> cof(n, vector<double>(n, 0.0));
+	vector<vector<double>> f(n, vector<double>(n, 0.0));
+	// Initialize dp array
+	vector<vector<double>> dp(hp + 1, vector<double>(n, 0.0));
 
-	for (int i = 0; i <= hp; ++i) {
-		for (int t = 0; t <= n; ++t) {
-			dp[i][t] = 0;
-		}
-	}
-
-	dp[hp][1] = 1;
-
-	vector<int> noDamagePoints, damagePoints;
-	for (int i = 0; i < damage.size(); ++i) {
-		if (damage[i] == 0) {
-			noDamagePoints.push_back(i + 1);
-		} else {
-			damagePoints.push_back(i + 1);
-		}
-	}
-
-	for (int end : allEdges[1]) {
-		if (damage[end-1] > 0) {
-			dp[hp-damage[end-1]][end] = 1.0 / allEdges[1].size();
-		}
-	}
-
-	for (int cur_hp = hp - 1; cur_hp >= 0; --cur_hp) {
-		vector< vector<double> > mat;
-		
-		for (int i = 0; i < noDamagePoints.size(); ++i) {
-
-			vector<double> row;
-
-			// noDamagePoints variables + 1 constant
-			for (int i = 0; i <= noDamagePoints.size(); ++i)
-			{
-				row.push_back(0);
+	// First initialize the coefficient of the equation
+	for (int i = 0; i < n; i++) {
+		f[i][i] = 1.0;
+		cof[i][i] = 1.0;
+		// If there is no damage at this point
+		if (damage[i] == 0.0) {
+			int from = i + 1;
+			// Get the edge from this point
+			for (auto to : allEdges[from]) {
+				// Not the terminal point
+				if (to != n) {
+					cof[i][to - 1] -= 1.0 / degree[to];
+				}
 			}
-			row[i] = -1;
+		}
+	}
 
-			int p = noDamagePoints[i];
-			vector<int> edges = allEdges[p];
-			
-			for (int end : edges) {
-				// find
-				int idx = -1;
-				for (int k = 0; k < noDamagePoints.size(); ++k) {
-					if (noDamagePoints[k] == end) {
-						idx = k;
-						break;
+
+	// Now begin the gauss jordan algorithm
+	for (int i = 0; i < n; ++i) {
+		int maxId = i;
+		for (int j = i + 1; j < n; ++j) {
+			// Get the maxium index
+			if (fabs(cof[j][i]) > fabs(cof[maxId][i])) {
+				maxId = j;
+			}
+		}
+
+		// Check maxId and i relationship
+		if (maxId != i) {
+			for (int j = i; j < n; ++j) {
+				swap(cof[maxId][j], cof[i][j]);
+			}
+			for (int j = 0; j < n; ++j) {
+				swap(f[maxId][j], f[i][j]);
+			}
+		}
+		for (int j = 0; j < n; ++j) {
+			// Only j != i case
+			if (j != i) {
+				double t = cof[j][i] / cof[i][i];
+				for (int k = i; k < n; ++k) {
+					cof[j][k] -= cof[i][k] * t;
+				}
+				for (int k = 0; k < n; ++k) {
+					f[j][k] -= f[i][k] * t;
+				}
+			}
+		}
+	}
+	// Last divide by cof matrix
+	for (int i = 0; i < n; ++i) {
+		for (int j = 0; j < n; ++j) {
+			f[i][j] /= cof[i][i];
+		}
+	}
+
+
+	// Now let's begin the dp algorithm
+	// Begin with the highest hp
+	double sum = 0.0;
+	for (int k = hp; k > 0; k--) {
+		// Constant vector
+		vector<double> constant(n, 0.0);
+		// Highest hp (start from 0 node)=> constant[0] = 1.0;
+		if (k == hp) {
+			constant[0] = 1.0;
+		}
+		for (int i = 0; i < n; ++i) {
+			// Have damage and not exceeds maximum hp
+			if (damage[i] && hp >= k + damage[i]) {
+				int from = i + 1;
+				for (auto to : allEdges[from]) {
+					// Not terminal point
+					if (to != n) {
+						constant[i] += dp[k + damage[i]][to - 1] / degree[to];
 					}
 				}
-
-				if (idx != -1) {
-					row[idx] += 1.0 / allEdges[end].size();
-				} else {
-					row[noDamagePoints.size()] -= 1.0 / allEdges[end].size() * dp[cur_hp][end];
-				}
-			}
-			mat.push_back(row);
-		}
-
-		vector<double> ans = gauss_jordan(mat);
-		for (double n : ans) {
-			cout << n << endl;
-		}
-
-		for (int i = 0; i < noDamagePoints.size(); ++i) {
-			dp[cur_hp][noDamagePoints[i]] = ans[i];
-		}
-
-		for (int k : damagePoints) {
-			for (int end : allEdges[k]) {
-				dp[cur_hp-damage[end-1]][end] += 1.0 / allEdges[end].size() * dp[cur_hp][end];
 			}
 		}
+		// Solve the dp equations
+		for (int i = 0; i < n; ++i) {
+			for (int j = 0; j < n; ++j) {
+				dp[k][i] += constant[j] * f[i][j];
+			}
+		}
+		// Sum the average times of terminal points
+		sum += dp[k][n - 1];
 	}
-
-	double ans = 0;
-	for (int i = 1; i < n; ++i) {
-		ans += dp[0][i];
-	}
-
-	cout << ans << endl;
-	return ans;
+	return sum;
 }

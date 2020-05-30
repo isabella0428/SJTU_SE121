@@ -222,7 +222,7 @@ int main()
 	
     }
     //end read file
-    
+
     // open file
     input_file3.open("test/test3.txt");
     if(!input_file3.is_open())
@@ -260,7 +260,6 @@ int main()
     }
     //end read file
 
-
     //test
     for(unsigned int i = 0;i < data1s.size();i++){
         
@@ -292,9 +291,7 @@ int main()
     }
     float  score_part2 = score;
     if(fabs(score_part2-score_part1-25.00) <= 1e-15) cout<<"Pass part2!"<<endl;
-
     for(unsigned int i = 0;i < data3s.size();i++){
-        
 	if(test3(data3s[i],ans3[i]))
 	    {
 		score += 25.00/data3s.size();
@@ -307,8 +304,6 @@ int main()
     }
     float  score_part3 = score;
     if(fabs(score_part3-score_part2-25.00) <= 1e-15) cout<<"Pass part3!"<<endl;
-
-
     input_file1.close();
     ans_file1.close();
     input_file2.close();
